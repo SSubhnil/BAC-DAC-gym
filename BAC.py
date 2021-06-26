@@ -2,7 +2,12 @@
 """
 Created on Fri Jun 25 18:58:44 2021
 
-@author: DELL
+@author: Shubham Subhnil
+@reference: author = {Ghavamzadeh, Mohammad and Engel, Yaakov and Valko, Michal},
+ journal = {Journal of Machine Learning Research},
+ title = {{Bayesian policy gradient and actor-critic algorithms}},
+ year = {2016}
+ }
 """
 
 import numpy as np
