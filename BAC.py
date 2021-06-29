@@ -16,13 +16,10 @@ import pandas as pd
 class BAC_main:
     
     #For defining Parameters to be learnt from the environment
-    def __init__(self):
     
-    
-    def 
         
     #Bayesian Actor-Critic function
-    def BAC(d, learning_params):
+    def BAC(self, d, learning_params):
         learning_params.num_output = (learning_params.num_update_max / learning_params.sample_interval) + 1
         perf = np.zeros((learning_params.num_trial, learning_params.num_output))
         
@@ -97,7 +94,7 @@ class BAC_main:
         return perf, theta
     
     #Bayesian Actor=Critic Gradient Function
-    def BAC_grad(episodes, G, domain_params, learning_params):
+    def BAC_grad(self, episodes, G, domain_params, learning_params):
         gam = learning_params.gam
         gam2 = gam**2
         

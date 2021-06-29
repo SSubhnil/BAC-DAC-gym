@@ -14,8 +14,10 @@ import numpy as np
 import random
 
 class mountain_car_v0:
-    def __init__(self, env_params):
+    def __init__(self, observation_space, action_space, **kwargs):#Initialize Domain Parameters
         #Initialize the environment variables and parameter functions.
+        
+    
         
     def dynamics(self, state, a_old, domain_params):
         x_old = state.x
