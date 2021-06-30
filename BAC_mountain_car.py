@@ -16,6 +16,14 @@ import random
 class mountain_car_v0:
     def __init__(self, observation_space, action_space, **kwargs):#Initialize Domain Parameters
         #Initialize the environment variables and parameter functions.
+        self.POS_RANGE = np.array([observation_space.low[0], observation_space.high[0]], dtype=np.float32)
+        self.VEL_RANGE = np.array([observation_space.low[-1], observation_space.high[-1]], dtype=np.float32)
+        
+        self.GOAL = POS_RANGE[-1]
+        
+        self.POS_MAP_RANGE = np.array([[0];[1]])
+        self.VEL_MAP_RANGE = np.array([[0];[1]])
+        self.GRID_SIZE = np.array([[4]; [4]])
         
     
         
