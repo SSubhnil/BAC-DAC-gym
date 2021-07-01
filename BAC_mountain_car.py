@@ -26,11 +26,15 @@ class mountain_car_v0:
         self.GRID_SIZE = np.transpose(np.array([4, 4]))
         
         #Features initialization
-        self.c_map_pos = np.linalg.solve(np.array([[self.POS_RANGE[0], 1],
-                                   [self.POS_RANGE[-1], 1]]), np.array([[self.POS_MAP_RANGE[0]],[self.POS_MAP_RANGE[-1]]]))
+        self.c_map_pos = np.linalg.solve(np.array([[self.POS_RANGE[0], 1], [self.POS_RANGE[-1], 1]]),
+                                         np.array([[self.POS_MAP_RANGE[0]],[self.POS_MAP_RANGE[-1]]]))
         self.c_map_vel = np.linalg.solve(np.array([[self.VEL_RANGE[0], 1],
-                                                   [self.VEL_RANGE[-1], 1]]), np.array([[self.VEL_MAP_RANGE[0]],
-                                                                                        [self.VEL_MAP_RANGE[-1]]]))
+                                                   [self.VEL_RANGE[-1], 1]]),
+                                         np.array([[self.VEL_MAP_RANGE[0]],
+                                                   [self.VEL_MAP_RANGE[-1]]]))
+                                                                                        
+        self.GRID_STEP = np.transpose(np.array([(self.POS_MAP_RANGE[-1] - self.POS_MAP_RANGE[0])/self.GRID_SIZE[0]],
+                                  (self.VEL_MAP_RANGE[-1] - self.VEL_MAP_RANGE[0])/self.GRID_SIZE[-1]))
         self.NUM_STATE_FEATURES = self.GRID_SIZE[0] * self.GRID_SIZE[-1]
         self.GRID_CENTERS = np.zeros((2,self.NUM_STATE_FEATURES), dtype = np.int32)
         
@@ -40,6 +44,15 @@ class mountain_car_v0:
                     [self.POS_MAP_RANGE[0] + ((i- 0.5) * self.GRID_STEP[0]), self.VEL_MAP_RANGE[0] +
                      ((j - 0.5) * self.GRID_STEP[1])]))
     
+        self.sig_grid = 1.3 * self.GRID_STEP[0]
+        self.sig_grid2 = self.sig_grid**2
+        self.SIG_GRID = self.sig_grid2 * np.identity(2)
+        self.INV_SIG_GRID = np.linalg.inv(self.SIG_GRID)
+        self.phi_x = np.zeros((self.NUM_STATE_FEATURES, 1))
+        self.NUM_ACT = np.size(action_space)
+        self.ACT = action_space###########Box type error
+        self.num_policy_param = self.NUM_STATE_FEATURES * self.NUM_ACT
+        
         
     def dynamics(self, state, a_old, domain_params):
         x_old = state.x
