@@ -21,9 +21,16 @@ class mountain_car_v0:
         
         self.GOAL = POS_RANGE[-1]
         
-        self.POS_MAP_RANGE = np.array([[0];[1]])
-        self.VEL_MAP_RANGE = np.array([[0];[1]])
-        self.GRID_SIZE = np.array([[4]; [4]])
+        self.POS_MAP_RANGE = np.array([[0],[1]])
+        self.VEL_MAP_RANGE = np.array([[0],[1]])
+        self.GRID_SIZE = np.array([[4], [4]])
+        
+        #Features initialization
+        self.c_map_pos = np.linalg.solve(np.array([[self.POS_RANGE[0], 1],
+                                   [self.POS_RANGE[-1], 1]]), np.array([[self.POS_MAP_RANGE[0]],[self.POS_MAP_RANGE[-1]]]))
+        self.c_map_vel = np.linalg.solve(np.array([[self.VEL_RANGE[0], 1],
+                                                   [self.VEL_RANGE[-1], 1]]), np.array([[self.VEL_MAP_RANGE[0]],
+                                                                                        [self.VEL_MAP_RANGE[-1]]]))
         
     
         
