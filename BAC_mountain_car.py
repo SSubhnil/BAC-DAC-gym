@@ -13,6 +13,7 @@ environmrnt in GYM.
 import numpy as np
 import random
 import math
+from scipy.spatial.distance import cdist
 
 class mountain_car_v0:
     def __init__(self, observation_space, action_space, **kwargs):#Initialize Domain Parameters
@@ -63,45 +64,52 @@ class mountain_car_v0:
         x(2) = max(self.VEL_RANGE[1] , min(tmp3 , self.VEL_RANGE[2]))
         
         tmp3 = x_old(1) + x(2)
-        x(1) = max(domain_params.POS_RANGE(1) , min(+tmp3 , domain_params.POS_RANGE(2)))
+        x(1) = max(self.POS_RANGE[0] , min(+tmp3 , self.POS_RANGE[1]))
         
-        if (x(1) == domain_params.POS_RANGE(1)):
+        if (x(1) == self.POS_RANGE[0]):
             x(2) = 0
         
-        if (x(1) >= domain_params.GOAL):
-            x(1) = domain_params.GOAL
+        if (x(1) >= self.GOAL):
+            x(1) = self.GOAL
             x(2) = 0
             
     def calc_score(self, theta, state, domain_params, _):
         y = state.y
         
         #feature values
-        phi_x = zeros(domain_params.NUM_STATE_FEATURES,1)
-        mu = zeros(domain_params.NUM_ACT,1)
+        phi_x = np.transpose(np.zeros((self.NUM_STATE_FEATURES)))
+        mu = np.transpose(np.zeros((self.NUM_ACT)))
         
-        for tt in range(domain_params.NUM_STATE_FEATURES):
-            tmp1 = y - domain_params.GRID_CENTERS(:,tt);
-            phi_x(tt) = exp(-0.5 * np.transpose(tmp1) * domain_params.INV_SIG_GRID * tmp1)
+        for tt in range(self.NUM_STATE_FEATURES):
+            tmp1 = y - self.GRID_CENTERS[:,tt];
+            phi_x[tt] = math.exp(-0.5 * np.transpose(tmp1) * self.INV_SIG_GRID * tmp1)#Turns out to be a scalar
             
-        for tt in range(domain_params.NUM_ACT):
-            if tt == 1:
-                phi_xa = [phi_x; zeros(domain_params.NUM_STATE_FEATURES,1);]
+        for tt in range(self.NUM_ACT):
+            if tt == 0:
+                phi_xa = np.transpose(np.array(
+                    [phi_x, np.transpose(np.zeros((self.NUM_STATE_FEATURES)))]
+                    ))
             else:
-                phi_xa = [zeros(domain_params.NUM_STATE_FEATURES,1); phi_x]
+                phi_xa = np.transpose(np.array(
+                    [np.transpose(np.zeros(self.NUM_STATE_FEATURES)), phi_x]
+                    ))
                 
-            mu(tt) = exp(np.transpose(phi_xa) * theta)
+            mu[tt] = math.exp(np.transpose(phi_xa) * theta)
             
         mu = mu / sum(mu)
         
-        tmp2 = rand########
+        tmp2 = np.random.uniform(low=0.0, high = 1.0)
         
-        if tmp2 < mu(1):
-            a = domain.params.ACT(1)
-            scr = [phi_x * (1 - mu(1)); -phi_x * mu(2)]
+        if tmp2 < mu[0]:
+            a = self.ACT[0]
+            scr = np.array([[phi_x * (1 - mu[0])],
+                            [-phi_x * mu[1]]])
         else:
-            a = domain_params.ACT(2);
-            scr = [-phi_x * mu(1); phi_x * (1 - mu(2))]
-            
+            a = self.ACT[1];
+            scr = np.array([[-phi_x * mu[0]],
+                            [phi_x * (1 - mu[1])]])
+        
+        #Have to look at how the a and scr are handled with 2D indices
         return a, scr
     
     
@@ -111,7 +119,7 @@ class mountain_car_v0:
     
     def is_goal(self, state, domain_params):
         
-        if state.x(1) >= domain_params.GOAL:
+        if state.x(1) >= self.GOAL:
             state.isgoal = 1
         else:
             state.isgoal = 0
@@ -123,10 +131,14 @@ class mountain_car_v0:
         ck_x = 1;
         x = np.transpose(state.x);
         xdic = np.transpose(vertcat(statedic.x));###################
-        y = [domain_params.c_map_pos(1); domain_params.c_map_vel(1)] .* x;####################
-        ydic = repmat([domain_params.c_map_pos(1); domain_params.c_map_vel(1)],1,size(xdic,2)) .* xdic ;#######################
-        temp = pdist2(y',ydic').^2;#############
-        kx = ck_x * exp(-temp / (2 * sigk_x*sigk_x));###########
+        y = np.multiply(np.transpose(np.array([[self.c_map_pos[0]],
+                                               [self.c_map_vel[0]]])), x)######We will see
+        arbitrary = np.transpose(np.array([self.c_map_pos[0], self.c_map_vel[0]]))
+        ydic = np.multiply(np.matlib.repmat(arbitrary, 1, np.size(xdic,axis=1)), xdic)
+        
+        #Element-wiese squaring of Euclidean pair-wise distance
+        temp = cdist(np.transpose(y),np.transpose(ydic))**2;
+        kx = ck_x * math.exp(-temp / (2 * sigk_x*sigk_x))###########
         
         return kx
     
