@@ -12,6 +12,7 @@ environmrnt in GYM.
 """
 import numpy as np
 import random
+import math
 
 class mountain_car_v0:
     def __init__(self, observation_space, action_space, **kwargs):#Initialize Domain Parameters
@@ -50,7 +51,7 @@ class mountain_car_v0:
         self.INV_SIG_GRID = np.linalg.inv(self.SIG_GRID)
         self.phi_x = np.zeros((self.NUM_STATE_FEATURES, 1))
         self.NUM_ACT = np.size(action_space)
-        self.ACT = action_space###########Box type error
+        self.ACT = np.arange(action_space.n)
         self.num_policy_param = self.NUM_STATE_FEATURES * self.NUM_ACT
         
         
@@ -58,8 +59,8 @@ class mountain_car_v0:
         x_old = state.x
         
         #Change domain_params.... to an initialized constant
-        tmp3 = x_old(2) + (0.001 * a_old) - (0.0025 * cos(3 * x_old(1)))
-        x(2) = max(domain_params.VEL_RANGE(1) , min(tmp3 , domain_params.VEL_RANGE(2)))
+        tmp3 = x_old(2) + (0.001 * a_old) - (0.0025 * math.cos(3 * x_old(1)))################
+        x(2) = max(self.VEL_RANGE[1] , min(tmp3 , self.VEL_RANGE[2]))
         
         tmp3 = x_old(1) + x(2)
         x(1) = max(domain_params.POS_RANGE(1) , min(+tmp3 , domain_params.POS_RANGE(2)))
