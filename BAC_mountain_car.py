@@ -138,7 +138,7 @@ class mountain_car_v0:
         
         #Element-wiese squaring of Euclidean pair-wise distance
         temp = cdist(np.transpose(y),np.transpose(ydic))**2;
-        kx = ck_x * math.exp(-temp / (2 * sigk_x*sigk_x))###########
+        kx = ck_x * math.exp(-temp / (2 * sigk_x*sigk_x))
         
         return kx
     
@@ -149,31 +149,35 @@ class mountain_car_v0:
     def perf_eval(self, theta, domain_params, learning_params):
         step_avg = 0
         
-        for l in range(domain_params.num_episode_eval):
+        for l in range(self.num_episode_eval):
             t = 0
-            state = domain_params.random_state(domain_params)
-            a, _ = domain_params.calc_score(theta, state, domain_params)
+            state = self.random_state(self)
+            a, _ = self.calc_score(theta, state, self)
             
             while state.isgoal == 0 and t < learning_params.episode_len_max:
-                for istep in range(domain_parameters.STEP):
+                for istep in range(self.STEP):
                     if state.isgoal == 0:
-                        state, _ = domain_params.dynamics(state, a, domain_params)
-                        state = domain_params.is_goal(state, domain_params)
-                a, _ = domain_params.calc_score(theta, state, domain_params, learning_params)
+                        state, _ = self.dynamics(state, a, self)
+                        state = self.is_goal(state, self)
+                a, _ = self.calc_score(theta, state, self, learning_params)
                 t = t + 1
             
             step_avg = step_avg + t
         
-        perf = step_avg / domain_params.num_episode_eval
+        perf = step_avg / self.num_episode_eval
         
         return perf
                 
     def random_state(self, domain_params):
-         x = [((domain_params.POS_RANGE(2) - domain_params.POS_RANGE(1)) * rand) + domain_params.POS_RANGE(1);
-         ((domain_params.VEL_RANGE(2) - domain_params.VEL_RANGE(1)) * rand) + domain_params.VEL_RANGE(1)];
+         x = np.transpose(np.array(
+             [((self.POS_RANGE[1] - self.POS_RANGE[0]) * np.random.uniform(low=0.0, high=1.0)) + self.POS_RANGE[0],
+              ((self.VEL_RANGE[1] - self.VEL_RANGE[0]) * np.random.uniform(low=0.0, high=1.0)) + self.VEL_RANGE[0]]
+             ))
             
-         y = [(domain_params.c_map_pos(1) * x(1)) + domain_params.c_map_pos(2);
-                 (domain_params.c_map_vel(1) * x(2)) + domain_params.c_map_vel(2)];
+         y = np.transpose(np.array(
+             [(self.c_map_pos[0] * x(1)) + self.c_map_pos[1],
+              (self.c_map_vel[0] * x(2)) + self.c_map_vel[1]]
+             ))
         
          state.x = x;
          state.y = y;     
