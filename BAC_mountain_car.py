@@ -5,7 +5,7 @@
 Learning. BAC although being model-free, needs pre-conditioning of the domain parameters
 over the environment physics boundaries.
 
-How to: The Mountain car code initializes the current file and throws an instance
+How to: The Mountain car code is initialized as an object and is thrown as an instance
 to the BAC and BAC_grad for computation. This is how we can keep the BAC standardized
 accross all the environments. We will always need a custom BAC code for each
 environmrnt in GYM.
@@ -81,8 +81,9 @@ class mountain_car_v0:
         mu = np.transpose(np.zeros((self.NUM_ACT)))
         
         for tt in range(self.NUM_STATE_FEATURES):
-            tmp1 = y - self.GRID_CENTERS[:,tt];
-            phi_x[tt] = math.exp(-0.5 * np.transpose(tmp1) * self.INV_SIG_GRID * tmp1)#Turns out to be a scalar
+            tmp1 = y - self.GRID_CENTERS[:,tt]
+            #Turns out to be a scalar
+            phi_x[tt] = math.exp(-0.5 * np.transpose(tmp1) * self.INV_SIG_GRID * tmp1)
             
         for tt in range(self.NUM_ACT):
             if tt == 0:
