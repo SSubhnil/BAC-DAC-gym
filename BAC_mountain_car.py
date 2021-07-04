@@ -21,7 +21,7 @@ class mountain_car_v0:
         self.POS_RANGE = np.array([observation_space.low[0], observation_space.high[0]], dtype=np.float32)
         self.VEL_RANGE = np.array([observation_space.low[-1], observation_space.high[-1]], dtype=np.float32)
         
-        self.GOAL = POS_RANGE[-1]
+        self.GOAL = self.POS_RANGE[-1]
         
         self.POS_MAP_RANGE = np.transpose(np.array([0,1]))
         self.VEL_MAP_RANGE = np.transpose(np.array([0,1]))
@@ -35,8 +35,8 @@ class mountain_car_v0:
                                          np.array([[self.VEL_MAP_RANGE[0]],
                                                    [self.VEL_MAP_RANGE[-1]]]))
                                                                                         
-        self.GRID_STEP = np.transpose(np.array([(self.POS_MAP_RANGE[-1] - self.POS_MAP_RANGE[0])/self.GRID_SIZE[0]],
-                                  (self.VEL_MAP_RANGE[-1] - self.VEL_MAP_RANGE[0])/self.GRID_SIZE[-1]))
+        self.GRID_STEP = np.transpose(np.array([(self.POS_MAP_RANGE[-1] - self.POS_MAP_RANGE[0])/self.GRID_SIZE[0],
+                                  (self.VEL_MAP_RANGE[-1] - self.VEL_MAP_RANGE[0])/self.GRID_SIZE[-1]]))
         self.NUM_STATE_FEATURES = self.GRID_SIZE[0] * self.GRID_SIZE[-1]
         self.GRID_CENTERS = np.zeros((2,self.NUM_STATE_FEATURES), dtype = np.int32)
         
@@ -57,24 +57,25 @@ class mountain_car_v0:
         
         
     def dynamics(self, state, a_old, domain_params):
-        x_old = state.x
-        
+        #State is a 'list' with x, y and isgoal items. 
+        x_old = state[0]
+        x = np.zeros(2)
         #Change domain_params.... to an initialized constant
-        tmp3 = x_old(2) + (0.001 * a_old) - (0.0025 * math.cos(3 * x_old(1)))################
-        x(2) = max(self.VEL_RANGE[1] , min(tmp3 , self.VEL_RANGE[2]))
+        tmp3 = x_old[1] + (0.001 * a_old) - (0.0025 * math.cos(3 * x_old[0]))
+        x[1] = max(self.VEL_RANGE[1] , min(tmp3 , self.VEL_RANGE[2]))
         
-        tmp3 = x_old(1) + x(2)
-        x(1) = max(self.POS_RANGE[0] , min(+tmp3 , self.POS_RANGE[1]))
+        tmp3 = x_old[0] + x(2)
+        x[0] = max(self.POS_RANGE[0] , min(+tmp3 , self.POS_RANGE[1]))
         
-        if (x(1) == self.POS_RANGE[0]):
-            x(2) = 0
+        if (x[0] == self.POS_RANGE[0]):
+            x[1] = 0
         
-        if (x(1) >= self.GOAL):
-            x(1) = self.GOAL
-            x(2) = 0
+        if (x[0] >= self.GOAL):
+            x[0] = self.GOAL
+            x[1] = 0
             
     def calc_score(self, theta, state, domain_params, _):
-        y = state.y
+        y = state[1]#State is a 'list' with x, y and isgoal items. 
         
         #feature values
         phi_x = np.transpose(np.zeros((self.NUM_STATE_FEATURES)))
@@ -114,30 +115,30 @@ class mountain_car_v0:
         return a, scr
     
     
-    def calc_reward(self, state, _, _):
-        reward = state.isgoal - 1
+    def calc_reward(self, state, **kwargs):
+        reward = state[0] - 1
         return reward
     
     def is_goal(self, state, domain_params):
-        
-        if state.x(1) >= self.GOAL:
-            state.isgoal = 1
+        x = state[0]
+        if x[0] >= self.GOAL:
+            state[2] = 1
         else:
-            state.isgoal = 0
+            state[2] = 0
             
-        return state.goal
+        return state[2]
     
     def kernel_kx(self, state, statedic, domain_params):
         sigk_x = 1;
         ck_x = 1;
-        x = np.transpose(state.x);
+        x = np.transpose(state[0]);
         xdic = np.transpose(vertcat(statedic.x));###################
         y = np.multiply(np.transpose(np.array([[self.c_map_pos[0]],
                                                [self.c_map_vel[0]]])), x)######We will see
         arbitrary = np.transpose(np.array([self.c_map_pos[0], self.c_map_vel[0]]))
         ydic = np.multiply(np.matlib.repmat(arbitrary, 1, np.size(xdic,axis=1)), xdic)
         
-        #Element-wiese squaring of Euclidean pair-wise distance
+        #Element-wise squaring of Euclidean pair-wise distance
         temp = cdist(np.transpose(y),np.transpose(ydic))**2;
         kx = ck_x * math.exp(-temp / (2 * sigk_x*sigk_x))
         
@@ -152,12 +153,12 @@ class mountain_car_v0:
         
         for l in range(self.num_episode_eval):
             t = 0
-            state = self.random_state(self)
+            state = self.random_state()
             a, _ = self.calc_score(theta, state, self)
             
-            while state.isgoal == 0 and t < learning_params.episode_len_max:
+            while state[2] == 0 and t < learning_params.episode_len_max:
                 for istep in range(self.STEP):
-                    if state.isgoal == 0:
+                    if state[2] == 0:
                         state, _ = self.dynamics(state, a, self)
                         state = self.is_goal(state, self)
                 a, _ = self.calc_score(theta, state, self, learning_params)
@@ -169,7 +170,7 @@ class mountain_car_v0:
         
         return perf
                 
-    def random_state(self, domain_params):
+    def random_state(self):
          x = np.transpose(np.array(
              [((self.POS_RANGE[1] - self.POS_RANGE[0]) * np.random.uniform(low=0.0, high=1.0)) + self.POS_RANGE[0],
               ((self.VEL_RANGE[1] - self.VEL_RANGE[0]) * np.random.uniform(low=0.0, high=1.0)) + self.VEL_RANGE[0]]
@@ -179,10 +180,16 @@ class mountain_car_v0:
              [(self.c_map_pos[0] * x(1)) + self.c_map_pos[1],
               (self.c_map_vel[0] * x(2)) + self.c_map_vel[1]]
              ))
-        
-         state.x = x;
-         state.y = y;     
-         state.isgoal = 0;
+         
+         isgoal = 0
+         #We will use "state" as a list object
+         # state.x = x;
+         # state.y = y;     
+         # state.isgoal = 0;
+         
+         state = [x, y, isgoal]
+         
+         return state
 
 
 
