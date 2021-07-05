@@ -39,19 +39,19 @@ class BAC_main:
             #Fix the following expression
             alpha_schedule = learning_parameters.alp_init_BAC * (learning_params.alp_update_param / 
                                                                  (learning_params.alp_update_param + 
-                                                                  ([1:(learning_params.num_update_max + 1)] - 1)))
+                                                                  (np.arange(1,(learning_params.num_update_max + 1)) - 1)))
             
             for j in range(1, learning_params.num_update_max + 1):
                 
                 if ((j-1) % (learning_params.sample_interval)) == 0:
                     evalpoint = math.floor(j / learning_params.sample_interval) + 1
-                    perf(i, evalpoint) = d.perf_eval(theta, d, learning_params)
+                    perf[i, evalpoint] = d.perf_eval(theta, d, learning_params)
                     
                     #insert file handling protocol
                     
                 G = csr_matrix((d.num_policy_param, d.num_policy_param), dtype = np.float16)
                 
-                for l in range(1, learning_params.num_episode):
+                for l in range(1, learning_params.num_episode+1):
                     t = 0
                     episode_states = []
                     episode_scores = []
@@ -60,10 +60,11 @@ class BAC_main:
                     a, scr = d.calc_score(theta, state, d, learning_params)
                     scr = csr_matrix(scr)
                     
-                    while state.isgoal == True && t < learning_params.episode_len_max:
+                    #state is a "list" object with x, y and isgoal elements
+                    while state[2] == True && t < learning_params.episode_len_max:
                         
                         for istep in range(1, d.STEP):
-                            if state.isgoal == 0:
+                            if state[2] == 0:
                                 state, _ = d.dynamics(state, a, d)
                                 state = d.is_goal(state, d)
                         
@@ -78,10 +79,10 @@ class BAC_main:
                         
                         t = t + 1
                     
-                    episodes = tuple(episode_states, episode_scores, t)
+                    episodes = (episode_states, episode_scores, t)
                 
                 #Fix the identity matrix
-                G = G + 1e-6 * identity()
+                G = G + 1e-6 * np.identity(G.shape[0])
                 grad_BAC = bac_grad(episodes, G, d, learning_params)
                 
                 if learning_params.alp_schedule:
