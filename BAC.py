@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import math
 from scipy.sparse import csr_matrix
 from scipy.sparse import identity
-import pandas as pd
 
 
 class BAC_main:
@@ -37,7 +36,7 @@ class BAC_main:
             theta = np.zeros((d.num_policy_params, 1))
             
             #Fix the following expression
-            alpha_schedule = learning_parameters.alp_init_BAC * (learning_params.alp_update_param / 
+            alpha_schedule = learning_params.alp_init_BAC * (learning_params.alp_update_param / 
                                                                  (learning_params.alp_update_param + 
                                                                   (np.arange(1,(learning_params.num_update_max + 1)) - 1)))
             
@@ -61,7 +60,7 @@ class BAC_main:
                     scr = csr_matrix(scr)
                     
                     #state is a "list" object with x, y and isgoal elements
-                    while state[2] == True && t < learning_params.episode_len_max:
+                    while state[2] == True and t < learning_params.episode_len_max:
                         
                         for istep in range(1, d.STEP):
                             if state[2] == 0:
@@ -69,9 +68,13 @@ class BAC_main:
                                 state = d.is_goal(state, d)
                         
                         G = G + (scr * scr.transpose())
-                        
-                        episode_states = [episode_states, state]
-                        episode_scores = [episode_scores, scr]
+                        ##########Indexing issue while recurring "list" type
+                        for s in np.nditer(state):
+                            episode_states[len(episode_states):] = s
+                        for sco in np.nditer(scr):
+                            episode_scores[len(episode_scores):] = sco
+                            #OR
+                            #episode_scores[len(episode_scores):] = [sco for sco in np.nditer(scr)]
                         
                         a, scr = d.calc_score(theta, state, d, learning_params)
                         
@@ -83,7 +86,7 @@ class BAC_main:
                 
                 #Fix the identity matrix
                 G = G + 1e-6 * np.identity(G.shape[0])
-                grad_BAC = bac_grad(episodes, G, d, learning_params)
+                grad_BAC = self.BAC_grad(episodes, G, d, learning_params)
                 
                 if learning_params.alp_schedule:
                     alp = alpha_schedule(j)
@@ -122,12 +125,12 @@ class BAC_main:
             ISGOAL = 0
             t = 1
             T = T + 1
-            c = np.zeros(m, 1)
+            c = np.zeros((m, 1))
             d = 0
             s = math.inf
-            
-            state = episodes(1, 1)[:, t]
-            scr = episodes(1, 2)[:, t]
+            #################################################
+            state = episodes[0][:, t]
+            scr = episodes[1][:, t]
             scrT = csr_matrix.transpose(scr)
             
             temp1 = domain_params.state_kernel_kxx(state, domain_params)
@@ -151,23 +154,29 @@ class BAC_main:
             if m == 0 or delta > nu:
                 a_hat = a
                 a_hatT = np.linalg.transpose(a_hat)
-                h = [a; -gam]
-                a = [z; 1]
-                alpha = [alpha; 0]
-                C = [C, z; np.linalg.transpose(z), 0]
-                Kinv = [(delta * Kinv) + (a_hat * a_hatT), -a_hat;
-                        -a_hatT , 1] / delta
-                z = [z; 0]
-                c = [c; 0]
-                statedic = [statedic, state]
-                scr_dic = [scr_dic, scr]
-                invG_scr_dic = [invG_scr_dic, invG_scr]
+                h = [[a], [-gam]]
+                a = [[z], [1]]
+                alpha = [[alpha], [0]]
+                C = [[C, z], [np.linalg.transpose(z), 0]]
+                Kinv = np.linalg.solve([[(delta * Kinv) + (a_hat * a_hatT), -a_hat],
+                        [-a_hatT , 1]], delta)
+                z = [[z], [0]]
+                c = [[c], [0]]
+                for s in np.nditer(state):
+                    statedic[len(statedic):] = s
+                
+                ################Change scr to 1D array in BAC_mountain_car
+                for dic in np.nditer(scr):
+                    scr_dic[len(scr_dic):] = dic
+                for scd in np.nditer(invG_scr):
+                    invG_scr_dic[len(invG_scr_dic):] = scd
                 m = m + 1
-                k = [kT; kk]
+                k = [[kT], [kk]]
         
             #Time-loop
-            while (t < episodes(1, 3)):
-                state_od = statek+old = k
+            while (t < episodes[2]):
+                state_old = state
+                k_old = k
                 kk_old = kk
                 a_old = a
                 c_old = c
@@ -190,11 +199,11 @@ class BAC_main:
                 
                 #Non-goal update    
                 else:
-                    state = episodes(1, 1)[:, t + 1]
-                    scr = episodes(1, 2)[:, t + 1]
+                    state = episodes[0][:, t + 1]
+                    scr = episodes[1][:, t + 1]
                     scrT = csr_matrix.transpose(scr)
                     
-                    if state.isgoal:
+                    if state[2]:
                         ISGOAL = 1
                         t = t-1
                         T = T-1
@@ -214,21 +223,26 @@ class BAC_main:
                     d = (coef * d_old) + r - (np.transpose(dk) * alpha)
                     
                     if delta > nu:
-                        h = [a_old; -gam];
+                        h = [a_old, -gam]
                         dkk = (np.transpose(a_old) * (k_old - (2 * gam * k))) + (gam2 * kk)
-                        c = (coef * [c_old; 0]) + h - [C * dk; 0]
+                        c = (coef * [c_old, 0]) + h - [C * dk, 0]
                         s = ((1 + gam2) * sig2) + dkk - (np.transpose(dk) * C * dk) + (2 * coef * np.transpose(c_old) * dk) - (gam * sig2 * coef)
-                        alpha = [alpha; 0]
-                        C = [C, z; np.transpose(z), 0]
-                        statedic = [statedic, state]
-                        scr_dic = [scr_dic, scr]
-                        invG_scr_dic = [invG_scr_dic, invG_scr]
+                        alpha = [alpha, 0]
+                        C = [[C, z], [np.transpose(z), 0]]
+                        for s in np.nditer(state):
+                            statedic[len(statedic):] = s
+                        
+                        ################Change scr to 1D array in BAC_mountain_car
+                        for dic in np.nditer(scr):
+                            scr_dic[len(scr_dic):] = dic
+                        for scd in np.nditer(invG_scr):
+                            invG_scr_dic[len(invG_scr_dic):] = scd
                         m = m + 1
-                        Kinv = [(delta * Kinv) + (a * np.transpose(a)), -a;
-                                np.transpose(-a)                      , 1] / delta
-                        a = [z; 1]
-                        z = [z; 0]
-                        k = [k; kk]
+                        Kinv = [[(delta * Kinv) + (a * np.transpose(a)), -a],
+                                [np.transpose(-a)                      , 1]] / delta
+                        a = [z, 1]
+                        z = [z, 0]
+                        k = [k, kk]
                         
                     else:#delta <= nu
                         h = a_old - (gam * a)
@@ -247,7 +261,7 @@ class BAC_main:
                 T = T + 1
         
         #For all the fuss we went through, FINALLY!
-        grad = ck_xa * (scrdic * alpha)
+        grad = ck_xa * (scr_dic * alpha)
         
         return grad
                             

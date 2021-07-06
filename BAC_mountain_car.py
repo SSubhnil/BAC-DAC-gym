@@ -74,6 +74,14 @@ class mountain_car_v0:
             x[0] = self.GOAL
             x[1] = 0
             
+        y = np.array([(self.c_map_pos[0] * x[0]) + self.c_map_pos[1],
+                      self.c_map_vel[0] * x[1] + self.c_map_vel[1]])
+        isgoal = 0
+        nstate = [x, y, isgoal]
+        out = []
+        
+        return nstate, out
+            
     def calc_score(self, theta, state, domain_params, _):
         y = state[1]#State is a 'list' with x, y and isgoal items. 
         
@@ -132,7 +140,8 @@ class mountain_car_v0:
         sigk_x = 1;
         ck_x = 1;
         x = np.transpose(state[0]);
-        xdic = np.transpose(vertcat(statedic.x));###################
+        ############ Insert concatenation 
+        xdic = np.transpose(vertcat(statedic.x));
         y = np.multiply(np.transpose(np.array([[self.c_map_pos[0]],
                                                [self.c_map_vel[0]]])), x)######We will see
         arbitrary = np.transpose(np.array([self.c_map_pos[0], self.c_map_vel[0]]))
