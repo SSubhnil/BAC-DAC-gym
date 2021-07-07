@@ -238,11 +238,11 @@ class BAC_main:
                         for scd in np.nditer(invG_scr):
                             invG_scr_dic[len(invG_scr_dic):] = scd
                         m = m + 1
-                        Kinv = [[(delta * Kinv) + (a * np.transpose(a)), -a],
-                                [np.transpose(-a)                      , 1]] / delta
-                        a = [z, 1]
-                        z = [z, 0]
-                        k = [k, kk]
+                        Kinv = np.multiply([[(delta * Kinv) + (a * np.transpose(a)), -a],
+                                [np.transpose(-a)                      , 1]], 1/delta)
+                        a = [[z], [1]]
+                        z = [[z], [0]]
+                        k = [[k], [kk]]
                         
                     else:#delta <= nu
                         h = a_old - (gam * a)
