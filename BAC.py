@@ -68,7 +68,6 @@ class BAC_main:
                                 state = d.is_goal(state, d)
                         
                         G = G + (scr * scr.transpose())
-                        ##########Indexing issue while recurring "list" type
                         for s in np.nditer(state):
                             episode_states[len(episode_states):] = s
                         for sco in np.nditer(scr):

@@ -140,15 +140,16 @@ class mountain_car_v0:
         sigk_x = 1;
         ck_x = 1;
         x = np.transpose(state[0]);
-        ############ Insert concatenation 
-        xdic = np.transpose(vertcat(statedic.x));
-        y = np.multiply(np.transpose(np.array([[self.c_map_pos[0]],
-                                               [self.c_map_vel[0]]])), x)######We will see
+        #Possible conflict at concatenation
+        xdic = np.transpose(np.concatenate(i for i in statedic[:][0]))
+        y = np.multiply(np.array([self.c_map_pos[0],
+                                               self.c_map_vel[0]]), x)### We will see
+        #It makes no difference in Matrix multiplication in python if a 1D array is row-wise or column-wise
         arbitrary = np.transpose(np.array([self.c_map_pos[0], self.c_map_vel[0]]))
         ydic = np.multiply(np.matlib.repmat(arbitrary, 1, np.size(xdic,axis=1)), xdic)
         
         #Element-wise squaring of Euclidean pair-wise distance
-        temp = cdist(np.transpose(y),np.transpose(ydic))**2;
+        temp = cdist(np.transpose(y),np.transpose(ydic))**2
         kx = ck_x * math.exp(-temp / (2 * sigk_x*sigk_x))
         
         return kx
