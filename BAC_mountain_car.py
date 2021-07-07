@@ -23,9 +23,9 @@ class mountain_car_v0:
         
         self.GOAL = self.POS_RANGE[-1]
         
-        self.POS_MAP_RANGE = np.transpose(np.array([0,1]))
-        self.VEL_MAP_RANGE = np.transpose(np.array([0,1]))
-        self.GRID_SIZE = np.transpose(np.array([4, 4]))
+        self.POS_MAP_RANGE = np.array([[0],[1]])
+        self.VEL_MAP_RANGE = np.array([[0],[1]])
+        self.GRID_SIZE = np.array([[4], [4]])
         
         #Features initialization
         self.c_map_pos = np.linalg.solve(np.array([[self.POS_RANGE[0], 1], [self.POS_RANGE[-1], 1]]),
@@ -35,16 +35,16 @@ class mountain_car_v0:
                                          np.array([[self.VEL_MAP_RANGE[0]],
                                                    [self.VEL_MAP_RANGE[-1]]]))
                                                                                         
-        self.GRID_STEP = np.transpose(np.array([(self.POS_MAP_RANGE[-1] - self.POS_MAP_RANGE[0])/self.GRID_SIZE[0],
-                                  (self.VEL_MAP_RANGE[-1] - self.VEL_MAP_RANGE[0])/self.GRID_SIZE[-1]]))
+        self.GRID_STEP = np.array([[(self.POS_MAP_RANGE[-1] - self.POS_MAP_RANGE[0])/self.GRID_SIZE[0]],
+                                  [(self.VEL_MAP_RANGE[-1] - self.VEL_MAP_RANGE[0])/self.GRID_SIZE[-1]]])
         self.NUM_STATE_FEATURES = self.GRID_SIZE[0] * self.GRID_SIZE[-1]
         self.GRID_CENTERS = np.zeros((2,self.NUM_STATE_FEATURES), dtype = np.int32)
         
-        for i in range(1, self.GRID_SIZE[0]):
-            for j in range(1, self.GRID_SIZE[-1]):
-                self.GRID_CENTERS[:, ((i-1)*self.GRID_SIZE[-1])+j] = np.transpose(np.array(
-                    [self.POS_MAP_RANGE[0] + ((i- 0.5) * self.GRID_STEP[0]), self.VEL_MAP_RANGE[0] +
-                     ((j - 0.5) * self.GRID_STEP[1])]))
+        for i in range(0, self.GRID_SIZE[0]):
+            for j in range(0, self.GRID_SIZE[-1]):
+                self.GRID_CENTERS[:, ((i-1)*self.GRID_SIZE[-1])+j] = np.array([
+                    [self.POS_MAP_RANGE[0] + ((i- 0.5) * self.GRID_STEP[0])],
+                    [self.VEL_MAP_RANGE[0] + ((j - 0.5) * self.GRID_STEP[1])]])
     
         self.sig_grid = 1.3 * self.GRID_STEP[0]
         self.sig_grid2 = self.sig_grid**2
@@ -52,7 +52,7 @@ class mountain_car_v0:
         self.INV_SIG_GRID = np.linalg.inv(self.SIG_GRID)
         self.phi_x = np.zeros((self.NUM_STATE_FEATURES, 1))
         self.NUM_ACT = np.size(action_space)
-        self.ACT = np.arange(action_space.n)
+        self.ACT = np.row_stack(np.arange(action_space.n))
         self.num_policy_param = self.NUM_STATE_FEATURES * self.NUM_ACT
         
         
@@ -74,8 +74,8 @@ class mountain_car_v0:
             x[0] = self.GOAL
             x[1] = 0
             
-        y = np.array([(self.c_map_pos[0] * x[0]) + self.c_map_pos[1],
-                      self.c_map_vel[0] * x[1] + self.c_map_vel[1]])
+        y = np.array([[(self.c_map_pos[0] * x[0]) + self.c_map_pos[1]],
+                      [self.c_map_vel[0] * x[1] + self.c_map_vel[1]]])
         isgoal = 0
         nstate = [x, y, isgoal]
         out = []
@@ -86,23 +86,21 @@ class mountain_car_v0:
         y = state[1]#State is a 'list' with x, y and isgoal items. 
         
         #feature values
-        phi_x = np.transpose(np.zeros((self.NUM_STATE_FEATURES)))
-        mu = np.transpose(np.zeros((self.NUM_ACT)))
+        phi_x = np.zeros((self.NUM_STATE_FEATURES, 1))
+        mu = np.zeros((self.NUM_ACT, 1))
         
-        for tt in range(self.NUM_STATE_FEATURES):
+        for tt in range(0, self.NUM_STATE_FEATURES):
             tmp1 = y - self.GRID_CENTERS[:,tt]
             #Turns out to be a scalar
-            phi_x[tt] = math.exp(-0.5 * np.transpose(tmp1) * self.INV_SIG_GRID * tmp1)
+            phi_x[tt, 0] = math.exp(-0.5 * np.transpose(tmp1) * self.INV_SIG_GRID * tmp1)
             
-        for tt in range(self.NUM_ACT):
+        for tt in range(0, self.NUM_ACT):
             if tt == 0:
-                phi_xa = np.transpose(np.array(
-                    [phi_x, np.transpose(np.zeros((self.NUM_STATE_FEATURES)))]
-                    ))
+                phi_xa = np.array([[phi_x],
+                                   [np.zeros((self.NUM_STATE_FEATURES, 1))]])
             else:
-                phi_xa = np.transpose(np.array(
-                    [np.transpose(np.zeros(self.NUM_STATE_FEATURES)), phi_x]
-                    ))
+                phi_xa = np.array([[(np.zeros(self.NUM_STATE_FEATURES, 1))],
+                                   [phi_x]])
                 
             mu[tt] = math.exp(np.transpose(phi_xa) * theta)
             
@@ -142,10 +140,9 @@ class mountain_car_v0:
         x = np.transpose(state[0]);
         #Possible conflict at concatenation
         xdic = np.transpose(np.concatenate(i for i in statedic[:][0]))
-        y = np.multiply(np.array([self.c_map_pos[0],
-                                               self.c_map_vel[0]]), x)### We will see
-        #It makes no difference in Matrix multiplication in python if a 1D array is row-wise or column-wise
-        arbitrary = np.transpose(np.array([self.c_map_pos[0], self.c_map_vel[0]]))
+        y = np.multiply(np.array([[self.c_map_pos[0]],
+                                               [self.c_map_vel[0]]]), x)### We will see
+        arbitrary = np.array([[self.c_map_pos[0]], [self.c_map_vel[0]]])
         ydic = np.multiply(np.matlib.repmat(arbitrary, 1, np.size(xdic,axis=1)), xdic)
         
         #Element-wise squaring of Euclidean pair-wise distance
@@ -181,15 +178,15 @@ class mountain_car_v0:
         return perf
                 
     def random_state(self):
-         x = np.transpose(np.array(
-             [((self.POS_RANGE[1] - self.POS_RANGE[0]) * np.random.uniform(low=0.0, high=1.0)) + self.POS_RANGE[0],
-              ((self.VEL_RANGE[1] - self.VEL_RANGE[0]) * np.random.uniform(low=0.0, high=1.0)) + self.VEL_RANGE[0]]
-             ))
+         x = np.array(
+             [[((self.POS_RANGE[1] - self.POS_RANGE[0]) * np.random.uniform(low=0.0, high=1.0)) + self.POS_RANGE[0]],
+              [((self.VEL_RANGE[1] - self.VEL_RANGE[0]) * np.random.uniform(low=0.0, high=1.0)) + self.VEL_RANGE[0]]]
+             )
             
-         y = np.transpose(np.array(
-             [(self.c_map_pos[0] * x(1)) + self.c_map_pos[1],
-              (self.c_map_vel[0] * x(2)) + self.c_map_vel[1]]
-             ))
+         y = np.array(
+             [[(self.c_map_pos[0] * x[0]) + self.c_map_pos[1]],
+              [(self.c_map_vel[0] * x[1]) + self.c_map_vel[1]]]
+             )
          
          isgoal = 0
          #We will use "state" as a list object

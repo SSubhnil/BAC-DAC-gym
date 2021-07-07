@@ -23,10 +23,10 @@ class BAC_main:
         perf = np.zeros((learning_params.num_trial, learning_params.num_output))
         
         #Have to add ~isfield(d, 'STEP') equivalent
-        if isfield(d, "STEP"):
+        if d.STEP:
             d.STEP = 1
         
-        for i in range(1, learning_params.num_trial):
+        for i in range(0, learning_params.num_trial):
             
            # exptime = now#Add current time module
             #toc
@@ -40,10 +40,10 @@ class BAC_main:
                                                                  (learning_params.alp_update_param + 
                                                                   (np.arange(1,(learning_params.num_update_max + 1)) - 1)))
             
-            for j in range(1, learning_params.num_update_max + 1):
+            for j in range(0, learning_params.num_update_max + 1):
                 
-                if ((j-1) % (learning_params.sample_interval)) == 0:
-                    evalpoint = math.floor(j / learning_params.sample_interval) + 1
+                if (j % (learning_params.sample_interval)) == 0:
+                    evalpoint = math.floor((j+1) / learning_params.sample_interval) + 1
                     perf[i, evalpoint] = d.perf_eval(theta, d, learning_params)
                     
                     #insert file handling protocol
@@ -88,7 +88,7 @@ class BAC_main:
                 grad_BAC = self.BAC_grad(episodes, G, d, learning_params)
                 
                 if learning_params.alp_schedule:
-                    alp = alpha_schedule(j)
+                    alp = alpha_schedule[j]
                 else:
                     alp = learning_params.alp_init_BAC
                 
@@ -153,6 +153,7 @@ class BAC_main:
             if m == 0 or delta > nu:
                 a_hat = a
                 a_hatT = np.linalg.transpose(a_hat)
+                #Treat all of them as array 'list'
                 h = [[a], [-gam]]
                 a = [[z], [1]]
                 alpha = [[alpha], [0]]
