@@ -21,6 +21,10 @@ class mountain_car_v0:
         self.POS_RANGE = np.array([observation_space.low[0], observation_space.high[0]], dtype=np.float32)
         self.VEL_RANGE = np.array([observation_space.low[-1], observation_space.high[-1]], dtype=np.float32)
         
+        for key, value in kwargs.items():
+            if key == "num_episode_eval":
+                self.num_episode_eval = value
+    
         self.GOAL = self.POS_RANGE[-1]
         
         self.POS_MAP_RANGE = np.array([[0],[1]])
@@ -64,7 +68,7 @@ class mountain_car_v0:
         tmp3 = x_old[1] + (0.001 * a_old) - (0.0025 * math.cos(3 * x_old[0]))
         x[1] = max(self.VEL_RANGE[1] , min(tmp3 , self.VEL_RANGE[2]))
         
-        tmp3 = x_old[0] + x(2)
+        tmp3 = x_old[0] + x[1]
         x[0] = max(self.POS_RANGE[0] , min(+tmp3 , self.POS_RANGE[1]))
         
         if (x[0] == self.POS_RANGE[0]):

@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 from scipy.sparse import csr_matrix
-from scipy.sparse import identity
+
 
 
 class BAC_main:
@@ -18,7 +18,7 @@ class BAC_main:
     
         
     #Bayesian Actor-Critic function
-    def BAC(self, d, learning_params):
+    def BAC(self, d, learning_params, **kwargs):
         learning_params.num_output = (learning_params.num_update_max / learning_params.sample_interval) + 1
         perf = np.zeros((learning_params.num_trial, learning_params.num_output))
         
@@ -48,7 +48,7 @@ class BAC_main:
                     
                     #insert file handling protocol
                     
-                G = csr_matrix((d.num_policy_param, d.num_policy_param), dtype = np.float16)
+                G = csr_matrix((d.num_policy_param, d.num_policy_param), dtype = np.float32)
                 
                 for l in range(1, learning_params.num_episode+1):
                     t = 0
