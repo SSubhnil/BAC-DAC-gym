@@ -61,6 +61,9 @@ class mountain_car_v0:
         
         
     def dynamics(self, state, a_old, domain_params):
+        """
+        
+        """
         #State is a 'list' with x, y and isgoal items. 
         x_old = state[0]
         x = np.zeros(2)
@@ -85,8 +88,14 @@ class mountain_car_v0:
         out = []
         
         return nstate, out
-            
+    
+          
     def calc_score(self, theta, state, domain_params, _):
+        """
+        calc_score: Chooses the next action 'a' and computes the Fisher Information
+        matrix score 'scr' for the mountain car domain.
+        """  
+        
         y = state[1]#State is a 'list' with x, y and isgoal items. 
         
         #feature values

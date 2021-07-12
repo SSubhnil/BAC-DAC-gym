@@ -55,7 +55,7 @@ class BAC_main:
                     episode_states = []
                     episode_scores = []
                     
-                    state = d.random_state(d)
+                    state = d.random_state(d)## Probably remove this
                     a, scr = d.calc_score(theta, state, d, learning_params)
                     scr = csr_matrix(scr)
                     
