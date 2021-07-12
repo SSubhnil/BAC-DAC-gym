@@ -14,15 +14,18 @@ from env.BAC_mountain_car import mountain_car_v0 as mc0_env
 env_main = gym.make("MountainCar-v0")
 env_main.reset()
 
-# A Class for easier handling of Learning Parameters
-# Another alternative is to have a "list" object but it will take further
-# processing to extract variables from that list. This Class is standard for all
-# BAC environemnts.
+
 class learning_parameters:
+    """
+    A Class for easier handling of Learning Parameters
+    Another alternative is to have a "list" object but it will take further
+    processing to extract variables from that list. This Class is standard for all
+    BAC environemnts.
+    """
     def __init__(self):
         self.episode_len_max = 200 ## Length of each episode in sec.
         self.num_update_max = 500 ## Apply the policy update after 500 cycles of BAC
-        self.sample_interval = 50 ## Policy evaluation after 50 policy updates
+        self.sample_interval = 50 ## Policy evaluation after every 50 policy updates
         self.num_trial = 1
         
         self.gam = 0.99 ## Discount Factor
@@ -38,11 +41,18 @@ class learning_parameters:
         self.SIGMA_INIT = 1
         
 
+"""
+Initialize MountainCar-v0 environment for BAC algogrithm
+num_episode_eval = 100 ## Number of experiment repeats for entire horizontal axis
+to obtain average results and confidence intervals
+"""
+# Initialize the learning parameters
+learning_params = learning_parameters()
 
-# Initialize MountainCar-v0 environment for BAC algogrithm
-# num_episode_eval = 100 ## Number of experiment repeats for entire horizontal axis
-# to obtain average results and confidence intervals
+# Initialize the BAC_domain which is the BAC_mountain_car.py
 BAC_domain = mc0_env(env_main.observation_space, env_main.action_space, num_episode_eval = 100)
-perf, _ = BAC_main.BAC(BAC_domain, learning_params = learning_parameters())
+
+# Start BAC with learning parameters, BAC_domain and GYM environment
+perf, _ = BAC_main.BAC(BAC_domain, learning_params, env_main)
 
 

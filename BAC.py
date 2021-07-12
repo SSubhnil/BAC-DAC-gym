@@ -42,6 +42,7 @@ class BAC_main:
             
             for j in range(0, learning_params.num_update_max + 1):
                 
+                # Policy evaluation after every n(sample_interval) policy updates
                 if (j % (learning_params.sample_interval)) == 0:
                     evalpoint = math.floor((j+1) / learning_params.sample_interval) + 1
                     perf[i, evalpoint] = d.perf_eval(theta, d, learning_params)
