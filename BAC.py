@@ -14,8 +14,11 @@ from scipy.sparse import csr_matrix
 
 class BAC_main:
     
-    #For defining Parameters to be learnt from the environment
-    
+    def __init__(self, gym_env, domain, learning_params):
+        self.gym_env = gym_env
+        self.domain = domain
+        self.learnin_params = learning_params
+        self.BAC(domain, learning_params, gym_env)
         
     #Bayesian Actor-Critic function
     def BAC(self, d, learning_params, **kwargs):
@@ -47,7 +50,7 @@ class BAC_main:
                     evalpoint = math.floor((j+1) / learning_params.sample_interval) + 1
                     perf[i, evalpoint] = d.perf_eval(theta, d, learning_params)
                     
-                    #insert file handling protocol
+                    ### insert file handling protocol
                     
                 G = csr_matrix((d.num_policy_param, d.num_policy_param), dtype = np.float32)
                 

@@ -16,8 +16,11 @@ import math
 from scipy.spatial.distance import cdist
 
 class mountain_car_v0:
-    def __init__(self, observation_space, action_space, **kwargs):#Initialize Domain Parameters
+    def __init__(self, gym_env, **kwargs):#Initialize Domain Parameters
         #Initialize the environment variables and parameter functions.
+        self.gym_env = gym_env
+        observation_space = gym_env.observation_space
+        action_space = gym_env.action_space
         self.POS_RANGE = np.array([[observation_space.low[0]], [observation_space.high[0]]], dtype=np.float32)
         self.VEL_RANGE = np.array([[observation_space.low[-1]], [observation_space.high[-1]]], dtype=np.float32)
         
@@ -99,7 +102,7 @@ class mountain_car_v0:
             scr = np.array([[phi_x * (1 - mu[0])],
                             [-phi_x * mu[1]]])
         else:
-            a = self.ACT[1];
+            a = self.ACT[-1];
             scr = np.array([[-phi_x * mu[0]],
                             [phi_x * (1 - mu[1])]])
         
@@ -133,18 +136,22 @@ class mountain_car_v0:
         Evaluates the policy after every n(sample_interval) (e.g. 50) updates.
         See BAC.py for the function call protocol.
         """
+        self.gym_env.reset()
         step_avg = 0
         
         for l in range(self.num_episode_eval):
             t = 0
-            state = self.random_state()
+            #state = self.random_state()
+            state = self.gym_env.reset()
             a, _ = self.calc_score(theta, state, self)
             
             while state[2] == 0 and t < learning_params.episode_len_max:
                 for istep in range(self.STEP):
                     if state[2] == 0:
-                        state, _ = self.dynamics(state, a, self)
-                        state = self.is_goal(state, self)
+                        #state, _ = self.dynamics(state, a, self)
+                        #state = self.is_goal(state, self)
+                        observation, reward, state[2], _ = self.gym_env.step(a) ### Fix this array methods
+                        state
                 a, _ = self.calc_score(theta, state, self, learning_params)
                 t = t + 1
             
