@@ -8,10 +8,10 @@ import sys
 sys.path.append('BAC-DAC-Gym/')
 
 from BAC import BAC_main
-from env.BAC_mountain_car import mountain_car_v0 as mc0_env
+from env.BAC_mountain_car import mountain_car_continuous_v0 as mc0_env
 
 # Make environment
-env_main = gym.make("MountainCar-v0")
+env_main = gym.make("MountainCarContinuous-v0")
 env_main.reset()
 
 
@@ -38,6 +38,7 @@ class learning_parameters:
         self.alp_schedule = 0 ## Fixed learning rate. Change to 1 for adaptive 'alpha'
         self.alp_update_param = 500 ## Total number of policy updates
         
+        self.SHOW_EVERY_RENDER = 100
         self.SIGMA_INIT = 1
         
 
@@ -53,6 +54,32 @@ learning_params = learning_parameters()
 BAC_domain = mc0_env(env_main, num_episode_eval = 100)
 
 # Start BAC with learning parameters, BAC_domain and GYM environment
-BAC = BAC_main(env_main, BAC_domain, learning_params)
+perf, theta = BAC_main(env_main, BAC_domain, learning_params)
+# theta is the final learned policy
+
+#%%
+# Visualize
+# Apply the learned policy on the Gym render
+random_state = env_main.reset()
+state_c_map = BAC_domain.c_map_eval(random_state)
+a, _ = BAC_domain.calc_score(theta, state_c_map)
+done = False
+episode_length = 40
+
+# Render for num_update_max/sample_interval time i.e. 0-axis length of 'perf'
+for i in range(np.shape(perf)[0]):
+    t = 0
+    while done == False or t < episode_length:# in secs
+        state_c_map[0], _, done, _ = env_main.step(np.array([a]))
+        state_c_map = BAC_domain.c_map_eval(state_c_map[0])
+        a, _ = BAC_domain.calc_score(theta, state_c_map)
+        t += 1
+        
+        env_main.render()
+
+env_main.close()
+
+#%% Data Plotting
+
 
 

@@ -15,7 +15,7 @@ import random
 import math
 from scipy.spatial.distance import cdist
 
-class mountain_car_v0:
+class mountain_car_continuous_v0:
     def __init__(self, gym_env, **kwargs):#Initialize Domain Parameters
         #Initialize the environment variables and parameter functions.
         self.gym_env = gym_env
@@ -58,18 +58,21 @@ class mountain_car_v0:
         self.SIG_GRID = self.sig_grid2 * np.identity(2)
         self.INV_SIG_GRID = np.linalg.inv(self.SIG_GRID)
         self.phi_x = np.zeros((self.NUM_STATE_FEATURES, 1))
-        self.NUM_ACT = action_space.n
-        self.ACT = np.row_stack(np.arange(action_space.n))
+        self.NUM_ACT = 2 ## -1.0 and 1.0 since Continuous control problem
+        self.ACT = np.array([action_space.low[0], action_space.high[0]])
         self.num_policy_param = self.NUM_STATE_FEATURES * self.NUM_ACT
         
-        
-    
-    
-          
-    def calc_score(self, theta, state, domain_params, _):
+    def calc_score(self, theta, state):
         """
+        Description-----
         calc_score: Chooses the next action 'a' and computes the Fisher Information
         matrix score 'scr' for the mountain car domain.
+        Parameters------
+        theta: Current policy
+        state: Current State = [x, y]
+        Return-----
+        a: Action to move to next state
+        scr: Fisher Information matrix
         """  
         
         y = state[1]#State is a 'list' with x, y and isgoal items. 
@@ -95,14 +98,16 @@ class mountain_car_v0:
             
         mu = mu / sum(mu)
         
+        np.random.seed(42)
         tmp2 = np.random.uniform(low=0.0, high = 1.0)
         
+        # Added some randomness is the action value. a * tmp2
         if tmp2 < mu[0]:
-            a = self.ACT[0]
+            a = self.ACT[0] * tmp2
             scr = np.array([[phi_x * (1 - mu[0])],
                             [-phi_x * mu[1]]])
         else:
-            a = self.ACT[-1];
+            a = self.ACT[-1] * tmp2
             scr = np.array([[-phi_x * mu[0]],
                             [phi_x * (1 - mu[1])]])
         
@@ -114,14 +119,14 @@ class mountain_car_v0:
         sigk_x = 1;
         ck_x = 1;
         x = np.transpose(state[0]);
-        #Possible conflict at concatenation
+        # Possible conflict at concatenation
         xdic = np.transpose(np.concatenate(i for i in statedic[:][0]))
         y = np.multiply(np.array([[self.c_map_pos[0]],
-                                               [self.c_map_vel[0]]]), x)### We will see
+                                  [self.c_map_vel[0]]]), x)### We will see
         arbitrary = np.array([[self.c_map_pos[0]], [self.c_map_vel[0]]])
         ydic = np.multiply(np.matlib.repmat(arbitrary, 1, np.size(xdic,axis=1)), xdic)
         
-        #Element-wise squaring of Euclidean pair-wise distance
+        # Element-wise squaring of Euclidean pair-wise distance
         temp = cdist(np.transpose(y),np.transpose(ydic))**2
         kx = ck_x * math.exp(-temp / (2 * sigk_x*sigk_x))
         
@@ -134,53 +139,51 @@ class mountain_car_v0:
     def perf_eval(self, theta, domain_params, learning_params):
         """
         Evaluates the policy after every n(sample_interval) (e.g. 50) updates.
-        See BAC.py for the function call protocol.
+        See BAC.py for the function call protocol --> Find --> perf_eval
         """
-        self.gym_env.reset()
         step_avg = 0
         
         for l in range(self.num_episode_eval):
             t = 0
-            #state = self.random_state()
-            state = self.gym_env.reset()
-            a, _ = self.calc_score(theta, state, self)
+            env_current_state = self.gym_env.reset()
+            state = self.c_map_eval(env_current_state)
+            # Since Gym.reset() only returns state = (position, velocity)
+            # and we also need a C map for this state which is necessary for
+            # BAC computation and is exclusive for each environment and observations
             
-            while state[2] == 0 and t < learning_params.episode_len_max:
+            done = False
+            a, _ = self.calc_score(theta, state)
+            reward2 = 0
+            reward1 = 0
+            while done == 0 or t < learning_params.episode_len_max:
                 for istep in range(self.STEP):
-                    if state[2] == 0:
+                    if done == 0:
                         #state, _ = self.dynamics(state, a, self)
                         #state = self.is_goal(state, self)
-                        observation, reward, state[2], _ = self.gym_env.step(a) ### Fix this array methods
-                        state
-                a, _ = self.calc_score(theta, state, self, learning_params)
+                        state[0], reward1, done, _ = self.gym_env.step(np.array([a])) ### Fix this array methods
+                        state = self.c_map_eval(state[0])
+                        reward1 += reward1
+                        reward2 -= 1
+                a, _ = self.calc_score(theta, state)
                 t = t + 1
             
             step_avg = step_avg + t
         
         perf = step_avg / self.num_episode_eval
         
-        return perf
+        return perf, reward1, reward2
                 
-    def random_state(self):
-         x = np.array(
-             [[((self.POS_RANGE[1] - self.POS_RANGE[0]) * np.random.uniform(low=0.0, high=1.0)) + self.POS_RANGE[0]],
-              [((self.VEL_RANGE[1] - self.VEL_RANGE[0]) * np.random.uniform(low=0.0, high=1.0)) + self.VEL_RANGE[0]]]
-             )
-            
-         y = np.array(
-             [[(self.c_map_pos[0] * x[0]) + self.c_map_pos[1]],
-              [(self.c_map_vel[0] * x[1]) + self.c_map_vel[1]]]
-             )
-         
-         isgoal = 0
-         #We will use "state" as a list object
-         # state.x = x;
-         # state.y = y;     
-         # state.isgoal = 0;
-         
-         state = [x, y, isgoal]
-         
-         return state
+    def c_map_eval(self, x):
+                    
+        y = np.array(
+            [[(self.c_map_pos[0] * x[0]) + self.c_map_pos[1]],
+             [(self.c_map_vel[0] * x[1]) + self.c_map_vel[1]]]
+            )
+        x = np.row_stack(x)
+        # We will use "state" as a list object         
+        state = [x, y]
+        return state
+    
     def dynamics(self, state, a_old, domain_params):
         """
         dynamics() is obsolete when using Gym.

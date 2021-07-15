@@ -18,15 +18,15 @@ class BAC_main:
         self.gym_env = gym_env
         self.domain = domain
         self.learnin_params = learning_params
-        self.BAC(domain, learning_params, gym_env)
+        self.BAC(self.domain, self.learning_params, self.gym_env)
         
     #Bayesian Actor-Critic function
     def BAC(self, d, learning_params, **kwargs):
         learning_params.num_output = (learning_params.num_update_max / learning_params.sample_interval) + 1
-        perf = np.zeros((learning_params.num_trial, learning_params.num_output))
+        perf = np.zeros((learning_params.num_output, 3))
         
         #Have to add ~isfield(d, 'STEP') equivalent
-        if d.STEP:
+        if not d.STEP:
             d.STEP = 1
         
         for i in range(0, learning_params.num_trial):
@@ -47,10 +47,9 @@ class BAC_main:
                 
                 # Policy evaluation after every n(sample_interval) policy updates
                 if (j % (learning_params.sample_interval)) == 0:
-                    evalpoint = math.floor((j+1) / learning_params.sample_interval) + 1
-                    perf[i, evalpoint] = d.perf_eval(theta, d, learning_params)
-                    
-                    ### insert file handling protocol
+                    evalpoint = math.floor(j / learning_params.sample_interval)
+                    perf[evalpoint, 0], perf[evalpoint, 1], perf[evalpoint, 2] = d.perf_eval(theta, d, learning_params)
+                    # perf_eval() returns perf, reward1, reward2
                     
                 G = csr_matrix((d.num_policy_param, d.num_policy_param), dtype = np.float32)
                 
@@ -59,17 +58,25 @@ class BAC_main:
                     episode_states = []
                     episode_scores = []
                     
-                    state = d.random_state(d)## Probably remove this
-                    a, scr = d.calc_score(theta, state, d, learning_params)
+                    env_current_state = self.gym_env.reset()#state = d.random_state(d)
+                    state = d.c_map_eval(env_current_state)
+                    done = False
+                    # The problem now is handling of state in calc_score.
+                    # calc_score uses y array which is essentially a C map of
+                    # state = (position, velocity)
+                    # C maps are exclusive of each environment and observations
+                    a, scr = d.calc_score(theta, state)
                     scr = csr_matrix(scr)
                     
                     #state is a "list" object with x, y and isgoal elements
-                    while state[2] == True and t < learning_params.episode_len_max:
+                    while done == False or t < learning_params.episode_len_max:
                         
-                        for istep in range(1, d.STEP):
-                            if state[2] == 0:
-                                state, _ = d.dynamics(state, a, d)
-                                state = d.is_goal(state, d)
+                        for istep in range(0, d.STEP):
+                            if done == 0:
+                                # state, _ = d.dynamics(state, a, d)
+                                # state = d.is_goal(state, d)
+                                state[0], reward, done, _ = self.gym_env.step(np.array([a]))
+                                state = d.c_map_eval(state[0])
                         
                         G = G + (scr * scr.transpose())
                         for s in np.nditer(state):
@@ -79,7 +86,7 @@ class BAC_main:
                             #OR
                             #episode_scores[len(episode_scores):] = [sco for sco in np.nditer(scr)]
                         
-                        a, scr = d.calc_score(theta, state, d, learning_params)
+                        a, scr = d.calc_score(theta, state)
                         
                         scr = csr_matrix(scr)
                         
