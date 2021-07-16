@@ -1,4 +1,5 @@
 # BAC-DAC
-Bayesian Actor-Critic with Neural Networks. Developing an OpenAI Gym toolkit for Bayesian AC reinforcement learning..
+Developing an OpenAI Gym toolkit for Bayesian AC reinforcement learning.
 
-I am working on the code as of now. Will be updating shortly with MountainCar code. The rest will follow.
+The ```MountainCarContinuous-v0``` BAC algorithm is available now. See ```sample``` folder for implementation and ```env``` folder for support function.
+The ALgorithm details will be updated soon.
