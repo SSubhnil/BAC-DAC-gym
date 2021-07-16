@@ -11,7 +11,6 @@ accross all the environments. We will always need a custom BAC code for each
 environmrnt in GYM.
 """
 import numpy as np
-import random
 import math
 from scipy.spatial.distance import cdist
 
@@ -162,8 +161,8 @@ class mountain_car_continuous_v0:
                         #state = self.is_goal(state, self)
                         state[0], reward1, done, _ = self.gym_env.step(np.array([a])) ### Fix this array methods
                         state = self.c_map_eval(state[0])
-                        reward1 += reward1
-                        reward2 -= 1
+                        reward1 += reward1 ## Reward accumulated by Gym
+                        reward2 -= 1 ## User defined reward
                 a, _ = self.calc_score(theta, state)
                 t = t + 1
             

@@ -6,10 +6,9 @@ Created on Fri Jun 25 18:58:44 2021
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 import math
 from scipy.sparse import csr_matrix
-
+import pandas as pd
 
 
 class BAC_main:
@@ -18,14 +17,20 @@ class BAC_main:
         self.gym_env = gym_env
         self.domain = domain
         self.learnin_params = learning_params
-        self.BAC(self.domain, self.learning_params, self.gym_env)
+        self.data = np.zeros((self.learning_params.num_update_max, 6))
+        self.grad_store = []
+        self.policy_store = []
         
     #Bayesian Actor-Critic function
-    def BAC(self, d, learning_params, **kwargs):
-        learning_params.num_output = (learning_params.num_update_max / learning_params.sample_interval) + 1
-        perf = np.zeros((learning_params.num_output, 3))
+    def BAC(self):
+        d = self.domain
+        learning_params = self.learning_params
+        num_output = (learning_params.num_update_max / learning_params.sample_interval) + 1
+        perf = np.zeros((num_output, 3))
         
-        #Have to add ~isfield(d, 'STEP') equivalent
+        Pandas_dataframe = pd.DataFrame(np.zeros((learning_params.num_update_max, 6)))
+        Pandas_dataframe = Pandas_dataframe.astype('object')
+        
         if not d.STEP:
             d.STEP = 1
         
@@ -35,7 +40,6 @@ class BAC_main:
             #toc
             
             #Add file handling protocol
-            
             theta = np.zeros((d.num_policy_params, 1))
             
             #Fix the following expression
@@ -45,6 +49,8 @@ class BAC_main:
             
             for j in range(0, learning_params.num_update_max + 1):
                 
+                reward1 = 0
+                reward2 = 0
                 # Policy evaluation after every n(sample_interval) policy updates
                 if (j % (learning_params.sample_interval)) == 0:
                     evalpoint = math.floor(j / learning_params.sample_interval)
@@ -53,6 +59,8 @@ class BAC_main:
                     
                 G = csr_matrix((d.num_policy_param, d.num_policy_param), dtype = np.float32)
                 
+                # Run num_episode episodes for BAC Gradient evaluation
+                # Gradient evaluation occurs in batches of episodes
                 for l in range(1, learning_params.num_episode+1):
                     t = 0
                     episode_states = []
@@ -61,6 +69,7 @@ class BAC_main:
                     env_current_state = self.gym_env.reset()#state = d.random_state(d)
                     state = d.c_map_eval(env_current_state)
                     done = False
+                    
                     # The problem now is handling of state in calc_score.
                     # calc_score uses y array which is essentially a C map of
                     # state = (position, velocity)
@@ -77,7 +86,8 @@ class BAC_main:
                                 # state = d.is_goal(state, d)
                                 state[0], reward, done, _ = self.gym_env.step(np.array([a]))
                                 state = d.c_map_eval(state[0])
-                        
+                                reward1 += reward1
+                                reward2 -= 1
                         G = G + (scr * scr.transpose())
                         for s in np.nditer(state):
                             episode_states[len(episode_states):] = s
@@ -92,6 +102,8 @@ class BAC_main:
                         
                         t = t + 1
                     
+                    # Create the batch data of num_episode episodes
+                    # to be given for gradient estimation
                     episodes = (episode_states, episode_scores, t)
                 
                 #Fix the identity matrix
@@ -104,8 +116,22 @@ class BAC_main:
                     alp = learning_params.alp_init_BAC
                 
                 theta = theta + (alp * grad_BAC)
-    
-        return perf, theta
+                error = state[0][0][0] - self.gym_env.observation_space.high[0]
+                mae = abs(error)/(j+1)
+                mse = math.pow(error, 2)/(j+1)
+                # Data storing in self.data
+                self.data[j] = np.array([j+1, mae, mse, alp, reward1, reward2])
+                self.grad_store.append(grad_BAC)
+                self.policy_store.append(theta)
+                
+            Pandas_dataframe = pd.DataFrame({"Episode Batch":self.data[:, 0],
+                                     "Learning Rate":self.data[:, 3], "Mean Absolute Error":self.data[:, 1],
+                                     "Mean Squared Error":self.data[:, 2], "Batch Gym Reward":self.data[:, 4],
+                                     "Batch User Reward":self.data[:, 5], "BAC Gradient":self.grad_store,
+                                     "Policy Evolution":self.policy_store})
+            perf_dataframe = pd.DataFrame({"BAC Evaluation Batch":perf[:,0], "Gym Batch Reward":perf[:,1],
+                                           "User Defined Batch Reward":perf[:,2]})
+        return perf_dataframe, theta, Pandas_dataframe
     
     #Bayesian Actor=Critic Gradient Function
     def BAC_grad(self, episodes, G, domain_params, learning_params):
