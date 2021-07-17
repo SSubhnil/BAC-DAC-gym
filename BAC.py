@@ -16,7 +16,7 @@ class BAC_main:
     def __init__(self, gym_env, domain, learning_params):
         self.gym_env = gym_env
         self.domain = domain
-        self.learnin_params = learning_params
+        self.learning_params = learning_params
         self.data = np.zeros((self.learning_params.num_update_max, 6))
         self.grad_store = []
         self.policy_store = []
@@ -25,14 +25,13 @@ class BAC_main:
     def BAC(self):
         d = self.domain
         learning_params = self.learning_params
-        num_output = (learning_params.num_update_max / learning_params.sample_interval) + 1
-        perf = np.zeros((num_output, 3))
+        num_output = (learning_params.num_update_max / learning_params.sample_interval)
+        perf = np.zeros((math.ceil(num_output), 3))
         
         Pandas_dataframe = pd.DataFrame(np.zeros((learning_params.num_update_max, 6)))
         Pandas_dataframe = Pandas_dataframe.astype('object')
         
-        if not d.STEP:
-            d.STEP = 1
+        STEP = 1
         
         for i in range(0, learning_params.num_trial):
             
@@ -40,7 +39,7 @@ class BAC_main:
             #toc
             
             #Add file handling protocol
-            theta = np.zeros((d.num_policy_params, 1))
+            theta = np.zeros((d.num_policy_param, 1))
             
             #Fix the following expression
             alpha_schedule = learning_params.alp_init_BAC * (learning_params.alp_update_param / 
@@ -80,7 +79,7 @@ class BAC_main:
                     #state is a "list" object with x, y and isgoal elements
                     while done == False or t < learning_params.episode_len_max:
                         
-                        for istep in range(0, d.STEP):
+                        for istep in range(0, STEP):
                             if done == 0:
                                 # state, _ = d.dynamics(state, a, d)
                                 # state = d.is_goal(state, d)
@@ -88,12 +87,18 @@ class BAC_main:
                                 state = d.c_map_eval(state[0])
                                 reward1 += reward1
                                 reward2 -= 1
-                        G = G + (scr * scr.transpose())
+                        
+                        # G is a N x N matrix. We do outer product of scr
+                        # scr is a column-wise 1D array
+                        G = G + np.matmult(np.row_stack(scr),scr)## (scr * scr.transpose())
+                        
+                        # We use interates to store state, scr in a list type object
+                        # Iterates are used to prevent nested lists, a data nightmare
                         for s in np.nditer(state):
                             episode_states[len(episode_states):] = s
                         for sco in np.nditer(scr):
                             episode_scores[len(episode_scores):] = sco
-                            #OR
+                            #OR (shady)
                             #episode_scores[len(episode_scores):] = [sco for sco in np.nditer(scr)]
                         
                         a, scr = d.calc_score(theta, state)

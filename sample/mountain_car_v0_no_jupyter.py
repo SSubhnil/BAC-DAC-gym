@@ -2,13 +2,14 @@
 import gym
 import numpy as np
 import matplotlib.pyplot as plt
+import glob
 
-import os
-import sys
-sys.path.append('BAC-DAC-Gym/')
+# import sys
+# sys.path.append('../BAC-DAC-Gym/')
 
-from BAC import BAC_main
-from env.BAC_mountain_car import mountain_car_continuous_v0 as mc0_env
+from env.bac_mountain_car import mountain_car_continuous_v0 as mc0_env 
+from bac import BAC_main
+
 
 class learning_parameters:
     """

@@ -44,15 +44,16 @@ class mountain_car_continuous_v0:
         self.GRID_STEP = np.array([[(self.POS_MAP_RANGE[-1][0] - self.POS_MAP_RANGE[0][0])/self.GRID_SIZE[0][0]],
                                   [(self.VEL_MAP_RANGE[-1][0] - self.VEL_MAP_RANGE[0][0])/self.GRID_SIZE[-1][0]]])
         self.NUM_STATE_FEATURES = self.GRID_SIZE[0][0] * self.GRID_SIZE[-1][0]
-        self.GRID_CENTERS = np.zeros((2,self.NUM_STATE_FEATURES), dtype = np.int32)
+        self.GRID_CENTERS = np.zeros((2,self.NUM_STATE_FEATURES), dtype = np.float32)
         
         for i in range(0, self.GRID_SIZE[0][0]):
             for j in range(0, self.GRID_SIZE[-1][0]):
-                self.GRID_CENTERS[:, ((i-1)*self.GRID_SIZE[-1][0])+j] = np.array([
-                    [self.POS_MAP_RANGE[0][0] + ((i - 0.5) * self.GRID_STEP[0][0])],
-                    [self.VEL_MAP_RANGE[0][0] + ((j - 0.5) * self.GRID_STEP[1][0])]])
+                self.GRID_CENTERS[0, (i*self.GRID_SIZE[-1][0])+j] = self.POS_MAP_RANGE[0][0] + (
+                    (i - 0.5) * self.GRID_STEP[0][0])
+                self.GRID_CENTERS[1, (i*self.GRID_SIZE[-1][0])+j] = self.VEL_MAP_RANGE[0][0] + (
+                    (j - 0.5) * self.GRID_STEP[1][0])
     
-        self.sig_grid = 1.3 * self.GRID_STEP[0][0]
+        self.sig_grid = 1.3 * self.GRID_STEP[0]
         self.sig_grid2 = self.sig_grid**2
         self.SIG_GRID = self.sig_grid2 * np.identity(2)
         self.INV_SIG_GRID = np.linalg.inv(self.SIG_GRID)
@@ -60,6 +61,7 @@ class mountain_car_continuous_v0:
         self.NUM_ACT = 2 ## -1.0 and 1.0 since Continuous control problem
         self.ACT = np.array([action_space.low[0], action_space.high[0]])
         self.num_policy_param = self.NUM_STATE_FEATURES * self.NUM_ACT
+        self.STEP = 1
         
     def calc_score(self, theta, state):
         """
@@ -79,21 +81,27 @@ class mountain_car_continuous_v0:
         #feature values
         phi_x = np.zeros((self.NUM_STATE_FEATURES, 1))
         mu = np.zeros((self.NUM_ACT, 1))
+        tmp1 = np.zeros((2, 1))
         
         for tt in range(0, self.NUM_STATE_FEATURES):
-            tmp1 = y - self.GRID_CENTERS[:,tt]
+            tmp1 = y - self.GRID_CENTERS[:,tt].reshape((2, 1))
             #Turns out to be a scalar
-            phi_x[tt, 0] = math.exp(-0.5 * np.transpose(tmp1) * self.INV_SIG_GRID * tmp1)
+            # We solve x'Ax by Matmult Ax then dot product of x and Ax
+            arbi1 = np.matmul(self.INV_SIG_GRID, tmp1)
+            phi_x[tt] = np.exp(-0.5 * np.dot(tmp1.reshape((1, 2)), arbi1))[0][0]
             
         for tt in range(0, self.NUM_ACT):
             if tt == 0:
-                phi_xa = np.array([[phi_x],
-                                   [np.zeros((self.NUM_STATE_FEATURES, 1))]])
+                phi_xa = np.array([phi_x.reshape(len(phi_x)),
+                                   np.zeros(self.NUM_STATE_FEATURES)])
             else:
-                phi_xa = np.array([[(np.zeros(self.NUM_STATE_FEATURES, 1))],
-                                   [phi_x]])
+                phi_xa = np.array([np.zeros(self.NUM_STATE_FEATURES),
+                                   phi_x.reshape(len(phi_x))])
+            
+            phi_xa = phi_xa.reshape(len(phi_x)+self.NUM_STATE_FEATURES)
+            lol = np.matmul(phi_xa, theta)
                 
-            mu[tt] = math.exp(np.transpose(phi_xa) * theta)
+            mu[tt] = np.exp(lol)
             
         mu = mu / sum(mu)
         
@@ -104,13 +112,13 @@ class mountain_car_continuous_v0:
         if tmp2 < mu[0]:
             a = self.ACT[0] * tmp2
             scr = np.array([[phi_x * (1 - mu[0])],
-                            [-phi_x * mu[1]]])
+                            [-phi_x * mu[1]]]).reshape((1, len(phi_x)*2))
         else:
             a = self.ACT[-1] * tmp2
             scr = np.array([[-phi_x * mu[0]],
-                            [phi_x * (1 - mu[1])]])
+                            [phi_x * (1 - mu[1])]]).reshape((1, len(phi_x)*2))
         
-        #Have to look at how the a and scr are handled with 2D indices
+        # scr HAS TO BE a column-wise 1D array of size 1 x num_state_features 
         return a, scr
     
     
@@ -177,7 +185,7 @@ class mountain_car_continuous_v0:
         y = np.array(
             [[(self.c_map_pos[0] * x[0]) + self.c_map_pos[1]],
              [(self.c_map_vel[0] * x[1]) + self.c_map_vel[1]]]
-            )
+            ).reshape((2, 1))
         x = np.row_stack(x)
         # We will use "state" as a list object         
         state = [x, y]
