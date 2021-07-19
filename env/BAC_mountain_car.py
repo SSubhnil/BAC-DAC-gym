@@ -33,14 +33,15 @@ class mountain_car_continuous_v0:
         self.VEL_MAP_RANGE = np.array([[0],[1]])
         self.GRID_SIZE = np.array([[4], [4]])
         
-        #Features initialization
+        # Features initialization
+        # c_map_(pos/vel) are 2 x 1 vectors 
         self.c_map_pos = np.linalg.solve(np.array([[self.POS_RANGE[0][0], 1], [self.POS_RANGE[-1][0], 1]]),
                                          np.array([[self.POS_MAP_RANGE[0][0]],[self.POS_MAP_RANGE[-1][0]]]))
         self.c_map_vel = np.linalg.solve(np.array([[self.VEL_RANGE[0][0], 1],
                                                    [self.VEL_RANGE[-1][0], 1]]),
                                          np.array([[self.VEL_MAP_RANGE[0][0]],
                                                    [self.VEL_MAP_RANGE[-1][0]]]))
-                                                                                        
+        
         self.GRID_STEP = np.array([[(self.POS_MAP_RANGE[-1][0] - self.POS_MAP_RANGE[0][0])/self.GRID_SIZE[0][0]],
                                   [(self.VEL_MAP_RANGE[-1][0] - self.VEL_MAP_RANGE[0][0])/self.GRID_SIZE[-1][0]]])
         self.NUM_STATE_FEATURES = self.GRID_SIZE[0][0] * self.GRID_SIZE[-1][0]
@@ -86,7 +87,7 @@ class mountain_car_continuous_v0:
         for tt in range(0, self.NUM_STATE_FEATURES):
             tmp1 = y - self.GRID_CENTERS[:,tt].reshape((2, 1))
             #Turns out to be a scalar
-            # We solve x'Ax by Matmult Ax then dot product of x and Ax
+            # We solve x'Ax by Matmul Ax then dot product of x and Ax
             arbi1 = np.matmul(self.INV_SIG_GRID, tmp1)
             phi_x[tt] = np.exp(-0.5 * np.dot(tmp1.reshape((1, 2)), arbi1))[0][0]
             
@@ -111,12 +112,12 @@ class mountain_car_continuous_v0:
         # Added some randomness is the action value. a * tmp2
         if tmp2 < mu[0]:
             a = self.ACT[0] * tmp2
-            scr = np.array([[phi_x * (1 - mu[0])],
-                            [-phi_x * mu[1]]]).reshape((1, len(phi_x)*2))
+            scr = np.append(phi_x * (1 - mu[0]),
+                            -phi_x * mu[1], axis = 0)
         else:
             a = self.ACT[-1] * tmp2
-            scr = np.array([[-phi_x * mu[0]],
-                            [phi_x * (1 - mu[1])]]).reshape((1, len(phi_x)*2))
+            scr = np.append(-phi_x * mu[0],
+                            phi_x * (1 - mu[1]), axis = 0)#.reshape((1, len(phi_x)*2))
         
         # scr HAS TO BE a column-wise 1D array of size 1 x num_state_features 
         return a, scr
@@ -128,9 +129,9 @@ class mountain_car_continuous_v0:
         x = np.transpose(state[0]);
         # Possible conflict at concatenation
         xdic = np.transpose(np.concatenate(i for i in statedic[:][0]))
-        y = np.multiply(np.array([[self.c_map_pos[0]],
-                                  [self.c_map_vel[0]]]), x)### We will see
-        arbitrary = np.array([[self.c_map_pos[0]], [self.c_map_vel[0]]])
+        y = np.multiply(np.array([[self.c_map_pos[0][0]],
+                                  [self.c_map_vel[0][0]]]), x)### We will see
+        arbitrary = np.array([[self.c_map_pos[0][0]], [self.c_map_vel[0][0]]])
         ydic = np.multiply(np.matlib.repmat(arbitrary, 1, np.size(xdic,axis=1)), xdic)
         
         # Element-wise squaring of Euclidean pair-wise distance
@@ -183,8 +184,8 @@ class mountain_car_continuous_v0:
     def c_map_eval(self, x):
                     
         y = np.array(
-            [[(self.c_map_pos[0] * x[0]) + self.c_map_pos[1]],
-             [(self.c_map_vel[0] * x[1]) + self.c_map_vel[1]]]
+            [[(self.c_map_pos[0][0] * x[0]) + self.c_map_pos[1][0]],
+             [(self.c_map_vel[0][0] * x[1]) + self.c_map_vel[1][0]]]
             ).reshape((2, 1))
         x = np.row_stack(x)
         # We will use "state" as a list object         

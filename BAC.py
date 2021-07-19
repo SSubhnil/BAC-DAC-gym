@@ -7,7 +7,7 @@ Created on Fri Jun 25 18:58:44 2021
 
 import numpy as np
 import math
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, linalg
 import pandas as pd
 
 
@@ -59,7 +59,7 @@ class BAC_main:
                 G = csr_matrix((d.num_policy_param, d.num_policy_param), dtype = np.float32)
                 
                 # Run num_episode episodes for BAC Gradient evaluation
-                # Gradient evaluation occurs in batches of episodes
+                # Gradient evaluation occurs in batches of episodes (e.g. 5)
                 for l in range(1, learning_params.num_episode+1):
                     t = 0
                     episode_states = []
@@ -75,6 +75,7 @@ class BAC_main:
                     # C maps are exclusive of each environment and observations
                     a, scr = d.calc_score(theta, state)
                     scr = csr_matrix(scr)
+                    # print(scr)
                     
                     #state is a "list" object with x, y and isgoal elements
                     while done == False or t < learning_params.episode_len_max:
@@ -89,17 +90,12 @@ class BAC_main:
                                 reward2 -= 1
                         
                         # G is a N x N matrix. We do outer product of scr
-                        # scr is a column-wise 1D array
-                        G = G + np.matmult(np.row_stack(scr),scr)## (scr * scr.transpose())
+                        # scr is a row-wise 2D array of shape = (32, 1)
+                        G = G + (scr @ csr_matrix.transpose(scr)) ## Use @ for dot multiplication...
+                                                          ## of sparse matrices
                         
-                        # We use interates to store state, scr in a list type object
-                        # Iterates are used to prevent nested lists, a data nightmare
-                        for s in np.nditer(state):
-                            episode_states[len(episode_states):] = s
-                        for sco in np.nditer(scr):
-                            episode_scores[len(episode_scores):] = sco
-                            #OR (shady)
-                            #episode_scores[len(episode_scores):] = [sco for sco in np.nditer(scr)]
+                        episode_states.append(state)
+                        episode_scores.append(scr)
                         
                         a, scr = d.calc_score(theta, state)
                         
@@ -164,7 +160,7 @@ class BAC_main:
         
         for l in range(1, learning_params.num_episode):
             ISGOAL = 0
-            t = 1
+            t = 0
             T = T + 1
             c = np.zeros((m, 1))
             d = 0
@@ -175,18 +171,18 @@ class BAC_main:
             scrT = csr_matrix.transpose(scr)
             
             temp1 = domain_params.state_kernel_kxx(state, domain_params)
-            invG_scr = np.linalg.solve(G, scr)
+            invG_scr = linalg.spsolve(G, scr)
             
-            temp2 = ck_xa * (scrT * invG_scr)
+            temp2 = ck_xa * (scrT @ invG_scr)
             kk = temp1 + temp2
             
             if m > 0:
-                k = ck_xa * (scrT * invG_scr_dic) #State-action kernel -- Fisher Information Kernel
+                k = ck_xa * (scrT @ invG_scr_dic) #State-action kernel -- Fisher Information Kernel
                 k = k + domain_params.state_kernel_kx(state, statedic, domain_params)
-                kT = np.linalg.transpose(k)
+                kT = np.row_stack(k)
                 
-                a = Kinv * kT
-                delta = kk - (k * a)
+                a = np.matmul(Kinv, kT)
+                delta = kk - np.matmul(k, a)
             else:
                 k = []
                 a = []
@@ -194,7 +190,7 @@ class BAC_main:
                 
             if m == 0 or delta > nu:
                 a_hat = a
-                a_hatT = np.linalg.transpose(a_hat)
+                a_hatT = np.transpose(a_hat)
                 #Treat all of them as array 'list'
                 h = [[a], [-gam]]
                 a = [[z], [1]]
@@ -204,14 +200,9 @@ class BAC_main:
                         [-a_hatT , 1]], delta)
                 z = [[z], [0]]
                 c = [[c], [0]]
-                for s in np.nditer(state):
-                    statedic[len(statedic):] = s
-                
-                ################Change scr to 1D array in BAC_mountain_car
-                for dic in np.nditer(scr):
-                    scr_dic[len(scr_dic):] = dic
-                for scd in np.nditer(invG_scr):
-                    invG_scr_dic[len(invG_scr_dic):] = scd
+                statedic.append(state)
+                scr_dic.append(scr)
+                invG_scr_dic.append(invG_scr)
                 m = m + 1
                 k = [[kT], [kk]]
         
