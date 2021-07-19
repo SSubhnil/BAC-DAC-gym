@@ -106,7 +106,7 @@ class mountain_car_continuous_v0:
             
         mu = mu / sum(mu)
         
-        np.random.seed(42)
+        np.random.seed(13)
         tmp2 = np.random.uniform(low=0.0, high = 1.0)
         
         # Added some randomness is the action value. a * tmp2
@@ -114,6 +114,7 @@ class mountain_car_continuous_v0:
             a = self.ACT[0] * tmp2
             scr = np.append(phi_x * (1 - mu[0]),
                             -phi_x * mu[1], axis = 0)
+    
         else:
             a = self.ACT[-1] * tmp2
             scr = np.append(-phi_x * mu[0],
@@ -223,7 +224,7 @@ class mountain_car_continuous_v0:
         return nstate, out
      
     def calc_reward(self, state, **kwargs):
-        reward = state[0] - 1
+        reward = state[0][0][0] - 1
         return reward
     
     def is_goal(self, state, domain_params):

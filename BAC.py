@@ -86,6 +86,7 @@ class BAC_main:
                                 # state = d.is_goal(state, d)
                                 state[0], reward, done, _ = self.gym_env.step(np.array([a]))
                                 state = d.c_map_eval(state[0])
+                                state.append(done)
                                 reward1 += reward1
                                 reward2 -= 1
                         
@@ -165,12 +166,12 @@ class BAC_main:
             c = np.zeros((m, 1))
             d = 0
             s = math.inf
-            #################################################
-            state = episodes[0][:, t]
-            scr = episodes[1][:, t]
+            # state and scr are lists appended as a 1-D column-wise array objects.
+            state = episodes[0][t]
+            scr = episodes[1][t]
             scrT = csr_matrix.transpose(scr)
             
-            temp1 = domain_params.state_kernel_kxx(state, domain_params)
+            temp1 = domain_params.kernel_kxx(state, domain_params)
             invG_scr = linalg.spsolve(G, scr)
             
             temp2 = ck_xa * (scrT @ invG_scr)
@@ -178,7 +179,7 @@ class BAC_main:
             
             if m > 0:
                 k = ck_xa * (scrT @ invG_scr_dic) #State-action kernel -- Fisher Information Kernel
-                k = k + domain_params.state_kernel_kx(state, statedic, domain_params)
+                k = k + domain_params.kernel_kx(state, statedic, domain_params)
                 kT = np.row_stack(k)
                 
                 a = np.matmul(Kinv, kT)
@@ -187,24 +188,28 @@ class BAC_main:
                 k = []
                 a = []
                 delta = kk
-                
-            if m == 0 or delta > nu:
+            # delta cocmes out to be a 1x1 array which must be changed to scalar
+            # hence we use delta[0] and kk[0]
+            if m == 0 or delta[0] > nu:
                 a_hat = a
                 a_hatT = np.transpose(a_hat)
                 #Treat all of them as array 'list'
-                h = [[a], [-gam]]
-                a = [[z], [1]]
-                alpha = [[alpha], [0]]
-                C = [[C, z], [np.linalg.transpose(z), 0]]
-                Kinv = np.linalg.solve([[(delta * Kinv) + (a_hat * a_hatT), -a_hat],
-                        [-a_hatT , 1]], delta)
-                z = [[z], [0]]
-                c = [[c], [0]]
+                h = np.row_stack((a, -gam)) # h = [[a], [-gam]]
+                a = np.row_stack((z, 1)) # a = [[z], [1]]
+                alpha = np.row_stack((alpha, 0)) # alpha = [[alpha], [0]]
+                C = np.row_stack((np.append(C, z), np.append(np.transpose(z), 0))) 
+                # [[C, z], [np.transpose(z), 0]]
+                
+                Kinv = (1 / delta[0]) * [[(delta[0] * Kinv) + (a_hat * a_hatT), (-1 * a_hat)],
+                        [(-1*a_hatT) , 1]]
+                print(Kinv)
+                z = np.row_stack((z, 0)) # [[z], [0]]
+                c = np.row_stack((c, 0)) # [[c], [0]]
                 statedic.append(state)
                 scr_dic.append(scr)
                 invG_scr_dic.append(invG_scr)
                 m = m + 1
-                k = [[kT], [kk]]
+                k = np.append(kT, kk, axis = 0)
         
             #Time-loop
             while (t < episodes[2]):
@@ -216,7 +221,7 @@ class BAC_main:
                 s_old = s
                 d_old = d
                 
-                r = domain_params.calculate_reward(state_old, -1, domain_params)
+                r = domain_params.calc_reward(state_old, -1, domain_params)
                 
                 coef = (gam * sig2) / s_old
                 
@@ -226,53 +231,49 @@ class BAC_main:
                     dkT = np.transpose(dk)
                     dkk = kk_old
                     h = a_old
-                    c = (coef * c_old) + h- (C * dk)
+                    c = (coef * c_old) + h - (C * dk)
                     s = sig2 - (gam * sig2 * coef) + (dkT * (c + (coef * c_old)))
                     d = (coef * d_old) + r - (dkT * alpha)
                 
                 #Non-goal update    
                 else:
-                    state = episodes[0][:, t + 1]
-                    scr = episodes[1][:, t + 1]
+                    state = episodes[0][t + 1]
+                    scr = episodes[1][t + 1]
                     scrT = csr_matrix.transpose(scr)
                     
-                    if state[2]:
+                    if state[2] == True:
                         ISGOAL = 1
                         t = t-1
                         T = T-1
                     
-                    temp1 = domain_params.state_kernel_kxx(state, domain_params)
-                    invG_scr = np.linalg.solve(G, scr)
-                    temp2 = ck_xa * (scrT * invG_scr)
+                    temp1 = domain_params.kernel_kxx(state, domain_params)
+                    invG_scr = linalg.spsolve(G, scr)
+                    temp2 = ck_xa * (scrT @ invG_scr)
                     kk = temp1 + temp2
                     
-                    k = ck_xa * (scrT * invG_scr)
-                    k = k + domain_params.state_kernel_kx(state, statedic, domain_params)
+                    k = ck_xa * (scrT @ invG_scr_dic)
+                    k = k + domain_params.kernel_kx(state, statedic, domain_params)
                     
                     a = Kinv * k
-                    delta = kk - (np.transpose(k) * a)
+                    delta[0] = kk - (np.transpose(k) * a)
                     
                     dk = k_old - (gam * k)
                     d = (coef * d_old) + r - (np.transpose(dk) * alpha)
                     
-                    if delta > nu:
+                    if delta[0] > nu:
                         h = [a_old, -gam]
                         dkk = (np.transpose(a_old) * (k_old - (2 * gam * k))) + (gam2 * kk)
                         c = (coef * [c_old, 0]) + h - [C * dk, 0]
                         s = ((1 + gam2) * sig2) + dkk - (np.transpose(dk) * C * dk) + (2 * coef * np.transpose(c_old) * dk) - (gam * sig2 * coef)
                         alpha = [alpha, 0]
-                        C = [[C, z], [np.transpose(z), 0]]
-                        for s in np.nditer(state):
-                            statedic[len(statedic):] = s
+                        C = np.row_stack((np.append(C, z), np.append(np.transpose(z), 0)))
+                        statedic.append(state)
+                        scr_dic.append(scr)
+                        invG_scr_dic.append(invG_scr)
                         
-                        ################Change scr to 1D array in BAC_mountain_car
-                        for dic in np.nditer(scr):
-                            scr_dic[len(scr_dic):] = dic
-                        for scd in np.nditer(invG_scr):
-                            invG_scr_dic[len(invG_scr_dic):] = scd
                         m = m + 1
-                        Kinv = np.multiply([[(delta * Kinv) + (a * np.transpose(a)), -a],
-                                [np.transpose(-a)                      , 1]], 1/delta)
+                        Kinv = np.multiply([[(delta[0] * Kinv) + (a * np.transpose(a)), -1 * a],
+                                [np.transpose(-1 * a)                      , 1]], 1/delta[0])
                         a = [[z], [1]]
                         z = [[z], [0]]
                         k = [[k], [kk]]
