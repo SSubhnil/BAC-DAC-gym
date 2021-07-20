@@ -152,12 +152,12 @@ class BAC_main:
         statedic = []
         scr_dic = []
         invG_scr_dic = []
-        alpha = []
-        C = []
-        Kinv = []
-        k = []
-        c = []
-        z = []
+        alpha = np.array([0])
+        C = np.array([0])
+        Kinv = np.array([0])
+        k = np.array([0])
+        c = np.array([0])
+        z = np.array([0])
         
         for l in range(1, learning_params.num_episode):
             ISGOAL = 0
@@ -185,37 +185,63 @@ class BAC_main:
                 a = np.matmul(Kinv, kT)
                 delta = kk - np.matmul(k, a)
             else:
-                k = []
-                a = []
+                k = np.array([0])
+                a = np.array([0])
                 delta = kk
             # delta cocmes out to be a 1x1 array which must be changed to scalar
             # hence we use delta[0] and kk[0]
             if m == 0 or delta[0] > nu:
                 a_hat = a
-                a_hatT = np.transpose(a_hat)
-                #Treat all of them as array 'list'
-                h = np.row_stack((a, -gam)) # h = [[a], [-gam]]
-                a = np.row_stack((z, 1)) # a = [[z], [1]]
-                alpha = np.row_stack((alpha, 0)) # alpha = [[alpha], [0]]
-                C = np.row_stack((np.append(C, z), np.append(np.transpose(z), 0))) 
-                # [[C, z], [np.transpose(z), 0]]
                 
-                Kinv = (1 / delta[0]) * [[(delta[0] * Kinv) + (a_hat * a_hatT), (-1 * a_hat)],
-                        [(-1*a_hatT) , 1]]
-                print(Kinv)
-                z = np.row_stack((z, 0)) # [[z], [0]]
-                c = np.row_stack((c, 0)) # [[c], [0]]
+                # h = [[a], [-gam]]
+                if len(a) > 1:
+                    h = np.vstack((a, -gam)) 
+                else:
+                    h = np.array([-gam])
+                    
+                # a = [[z], [1]]
+                if len(z) > 1:
+                    a = np.vstack((z, 1))
+                else:
+                    a = np.array([1])
+                    
+                # alpha = [[alpha], [0]]
+                if len(alpha) > 1:
+                    alpha = np.vstack((alpha, 0))
+                else:
+                    alpha = np.array([1])
+                                
+                # [[C, z], [np.transpose(z), 0]]
+                if np.shape(C)[0] != 0 and len(z) > 1:
+                    C = np.row_stack((
+                        np.hstack((C, z)), np.hstack((z.T, 0))
+                        ))
+                else:
+                    C = np.array([0])
+                
+                
+                Kinv = (1 / delta[0]) * np.vstack((np.hstack(((delta[0] * Kinv) + (a_hat * a_hat.T), (-1 * a_hat))),
+                                                   np.hstack(((-1 * a_hat.T) , 1))
+                                                   ))
+                
+                # [[z], [0]]
+                if len(z) > 1:
+                    z = np.row_stack((z, 0))
+                
+                # [[c], [0]]
+                if len(c) > 1:
+                    c = np.row_stack((c, 0)) 
                 statedic.append(state)
                 scr_dic.append(scr)
                 invG_scr_dic.append(invG_scr)
                 m = m + 1
-                k = np.append(kT, kk, axis = 0)
+                k = np.append(kT, kk[0], axis = 0)
         
             #Time-loop
             while (t < episodes[2]):
                 state_old = state
                 k_old = k
-                kk_old = kk
+                kk_old = kk[0]
                 a_old = a
                 c_old = c
                 s_old = s
@@ -261,22 +287,25 @@ class BAC_main:
                     d = (coef * d_old) + r - (np.transpose(dk) * alpha)
                     
                     if delta[0] > nu:
-                        h = [a_old, -gam]
-                        dkk = (np.transpose(a_old) * (k_old - (2 * gam * k))) + (gam2 * kk)
-                        c = (coef * [c_old, 0]) + h - [C * dk, 0]
-                        s = ((1 + gam2) * sig2) + dkk - (np.transpose(dk) * C * dk) + (2 * coef * np.transpose(c_old) * dk) - (gam * sig2 * coef)
-                        alpha = [alpha, 0]
-                        C = np.row_stack((np.append(C, z), np.append(np.transpose(z), 0)))
+                        h = np.vstack((a_old, -gam))
+                        dkk = (a_old.T * (k_old - (2 * gam * k))) + (gam2 * kk[0])
+                        c = (coef * np.vstack((c_old, 0))) + h - np.vstack((C * dk, 0))
+                        s = ((1 + gam2) * sig2) + dkk - (dk.T * C * dk) + (2 * coef * c_old.T * dk) - (gam * sig2 * coef)
+                        alpha = np.vstack((alpha, 0))
+                        C = np.Vstack((np.hstack((C, z)), np.hstack((z.T, 0))))
                         statedic.append(state)
                         scr_dic.append(scr)
                         invG_scr_dic.append(invG_scr)
                         
                         m = m + 1
-                        Kinv = np.multiply([[(delta[0] * Kinv) + (a * np.transpose(a)), -1 * a],
-                                [np.transpose(-1 * a)                      , 1]], 1/delta[0])
-                        a = [[z], [1]]
-                        z = [[z], [0]]
-                        k = [[k], [kk]]
+                        Kinv = (1 / delta[0]) * np.vstack((np.hstack(((delta[0] * Kinv) + (a * a.T), (-1 * a))),
+                                                   np.hstack(((-1 * a.T) , 1))
+                                                   ))
+                        # Kinv = (1/delta[0]) * [[(delta[0] * Kinv) + (a * np.transpose(a)), -1 * a],
+                        #         [np.transpose(-1 * a)                      , 1]]
+                        a = np.vstack((z, 1))
+                        z = np.vstack((z, 0)) # [[z], [0]]
+                        k = np.vstack((k, kk[0])) # [[k], [kk]]
                         
                     else:#delta <= nu
                         h = a_old - (gam * a)
