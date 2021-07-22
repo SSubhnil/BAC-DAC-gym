@@ -11,7 +11,7 @@ from env.bac_mountain_car import mountain_car_continuous_v0 as mc0_env
 from bac import BAC_main
 
 
-class learning_parameters:
+class learning_parameters(object):
     """
     A Class for easier handling of Learning Parameters
     Another alternative is to have a "list" object but it will take further

@@ -11,6 +11,7 @@ accross all the environments. We will always need a custom BAC code for each
 environmrnt in GYM.
 """
 import numpy as np
+from numpy import matlib as mb
 import math
 from scipy.spatial.distance import cdist
 
@@ -89,7 +90,7 @@ class mountain_car_continuous_v0:
             #Turns out to be a scalar
             # We solve x'Ax by Matmul Ax then dot product of x and Ax
             arbi1 = np.matmul(self.INV_SIG_GRID, tmp1)
-            phi_x[tt] = np.exp(-0.5 * np.dot(tmp1.reshape((1, 2)), arbi1))[0][0]
+            phi_x[tt] = np.exp(-0.5 * np.dot(tmp1.reshape((1, 2)), arbi1)).item()
             
         for tt in range(0, self.NUM_ACT):
             if tt == 0:
@@ -128,16 +129,19 @@ class mountain_car_continuous_v0:
         sigk_x = 1;
         ck_x = 1;
         x = np.transpose(state[0]);
+        xdic = []
         # Possible conflict at concatenation
-        xdic = np.transpose(np.concatenate(i for i in statedic[:][0]))
-        y = np.multiply(np.array([[self.c_map_pos[0][0]],
-                                  [self.c_map_vel[0][0]]]), x)### We will see
-        arbitrary = np.array([[self.c_map_pos[0][0]], [self.c_map_vel[0][0]]])
-        ydic = np.multiply(np.matlib.repmat(arbitrary, 1, np.size(xdic,axis=1)), xdic)
+        for i in range(0, len(statedic)):
+            xdic.append(statedic[i][0].reshape((2, 1))) ## The shape is v-important
+        xdic = np.hstack(xdic)
+
+        y = np.multiply(np.vstack([self.c_map_pos[0][0], self.c_map_vel[0][0]]), x)### We will see
+        arbitrary = np.vstack([self.c_map_pos[0][0], self.c_map_vel[0][0]])
+        ydic = np.multiply(mb.repmat(arbitrary, 1, np.shape(xdic)[1]), xdic)
         
         # Element-wise squaring of Euclidean pair-wise distance
         temp = cdist(np.transpose(y),np.transpose(ydic))**2
-        kx = ck_x * math.exp(-temp / (2 * sigk_x*sigk_x))
+        kx = ck_x * np.exp(-temp / (2 * sigk_x*sigk_x))
         
         return kx
     
@@ -171,6 +175,7 @@ class mountain_car_continuous_v0:
                         #state = self.is_goal(state, self)
                         state[0], reward1, done, _ = self.gym_env.step(np.array([a])) ### Fix this array methods
                         state = self.c_map_eval(state[0])
+                        state.append(done)
                         reward1 += reward1 ## Reward accumulated by Gym
                         reward2 -= 1 ## User defined reward
                 a, _ = self.calc_score(theta, state)
@@ -188,7 +193,7 @@ class mountain_car_continuous_v0:
             [[(self.c_map_pos[0][0] * x[0]) + self.c_map_pos[1][0]],
              [(self.c_map_vel[0][0] * x[1]) + self.c_map_vel[1][0]]]
             ).reshape((2, 1))
-        x = np.row_stack(x)
+        x = np.vstack(x)
         # We will use "state" as a list object         
         state = [x, y]
         return state
@@ -223,8 +228,8 @@ class mountain_car_continuous_v0:
         
         return nstate, out
      
-    def calc_reward(self, state, **kwargs):
-        reward = state[0][0][0] - 1
+    def calc_reward(self, state):
+        reward = state[2] - 1
         return reward
     
     def is_goal(self, state, domain_params):

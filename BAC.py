@@ -7,7 +7,7 @@ Created on Fri Jun 25 18:58:44 2021
 
 import numpy as np
 import math
-from scipy.sparse import csr_matrix, linalg
+from scipy.sparse import csr_matrix, linalg, hstack
 import pandas as pd
 
 
@@ -81,7 +81,7 @@ class BAC_main:
                     while done == False or t < learning_params.episode_len_max:
                         
                         for istep in range(0, STEP):
-                            if done == 0:
+                            if done == False:
                                 # state, _ = d.dynamics(state, a, d)
                                 # state = d.is_goal(state, d)
                                 state[0], reward, done, _ = self.gym_env.step(np.array([a]))
@@ -175,15 +175,14 @@ class BAC_main:
             invG_scr = linalg.spsolve(G, scr)
             
             temp2 = ck_xa * (scrT @ invG_scr)
-            kk = temp1 + temp2
+            kk = temp1 + temp2 # kk is always a scalar but returned as 1x1 array.
             
             if m > 0:
-                k = ck_xa * (scrT @ invG_scr_dic) #State-action kernel -- Fisher Information Kernel
-                k = k + domain_params.kernel_kx(state, statedic, domain_params)
-                kT = np.row_stack(k)
+                k = ck_xa * (scrT @ hstack(invG_scr_dic)) #State-action kernel -- Fisher Information Kernel
+                k = np.vstack(k + domain_params.kernel_kx(state, statedic, domain_params))
                 
-                a = np.matmul(Kinv, kT)
-                delta = kk - np.matmul(k, a)
+                a = np.matmul(Kinv, k)
+                delta = kk - np.matmul(np.transpose(k), a) # delta should be a 'scalar'
             else:
                 k = np.array([0])
                 a = np.array([0])
@@ -213,53 +212,52 @@ class BAC_main:
                                 
                 # [[C, z], [np.transpose(z), 0]]
                 if np.shape(C)[0] != 0 and len(z) > 1:
-                    C = np.row_stack((
+                    C = np.vstack((
                         np.hstack((C, z)), np.hstack((z.T, 0))
                         ))
                 else:
                     C = np.array([0])
                 
                 
-                Kinv = (1 / delta[0]) * np.vstack((np.hstack(((delta[0] * Kinv) + (a_hat * a_hat.T), (-1 * a_hat))),
+                Kinv = (1 / delta.item()) * np.vstack((np.hstack(((delta.item() * Kinv) + (a_hat * a_hat.T), (-1 * a_hat))),
                                                    np.hstack(((-1 * a_hat.T) , 1))
                                                    ))
                 
                 # [[z], [0]]
                 if len(z) > 1:
-                    z = np.row_stack((z, 0))
+                    z = np.vstack((z, 0))
                 
                 # [[c], [0]]
                 if len(c) > 1:
-                    c = np.row_stack((c, 0)) 
+                    c = np.vstack((c, 0)) 
                 statedic.append(state)
                 scr_dic.append(scr)
                 invG_scr_dic.append(invG_scr)
                 m = m + 1
-                k = np.append(kT, kk[0], axis = 0)
+                k = np.vstack((k, kk.item()))
         
             #Time-loop
             while (t < episodes[2]):
                 state_old = state
                 k_old = k
-                kk_old = kk[0]
+                kk_old = kk.item()
                 a_old = a
                 c_old = c
                 s_old = s
                 d_old = d
                 
-                r = domain_params.calc_reward(state_old, -1, domain_params)
+                r = domain_params.calc_reward(state_old)
                 
                 coef = (gam * sig2) / s_old
                 
                 #Goal update
                 if ISGOAL == 1:
                     dk = k_old
-                    dkT = np.transpose(dk)
                     dkk = kk_old
                     h = a_old
-                    c = (coef * c_old) + h - (C * dk)
-                    s = sig2 - (gam * sig2 * coef) + (dkT * (c + (coef * c_old)))
-                    d = (coef * d_old) + r - (dkT * alpha)
+                    c = (coef * c_old) + h - np.matmul(np.atleast_2d(C), dk)
+                    s = sig2 - (gam * sig2 * coef) + np.matmul(dk.T, c + (coef * c_old))
+                    d = (coef * d_old) + r - np.dot(dk, np.atleast_2d(alpha))
                 
                 #Non-goal update    
                 else:
@@ -275,56 +273,58 @@ class BAC_main:
                     temp1 = domain_params.kernel_kxx(state, domain_params)
                     invG_scr = linalg.spsolve(G, scr)
                     temp2 = ck_xa * (scrT @ invG_scr)
-                    kk = temp1 + temp2
+                    kk = temp1 + temp2 # kk is always a 'scalar'
                     
-                    k = ck_xa * (scrT @ invG_scr_dic)
-                    k = k + domain_params.kernel_kx(state, statedic, domain_params)
+                    k = ck_xa * (scrT @ np.hstack(invG_scr_dic))
+                    k = np.vstack(k + domain_params.kernel_kx(state, statedic, domain_params))
                     
-                    a = Kinv * k
-                    delta[0] = kk - (np.transpose(k) * a)
+                    a = np.matmul(Kinv, k)
+                    delta = kk - np.matmul(np.transpose(k), a) # delta should be a 'scalar'
                     
                     dk = k_old - (gam * k)
-                    d = (coef * d_old) + r - (np.transpose(dk) * alpha)
+                    d = (coef * d_old) + r - np.dot(dk, np.atleast_2d(alpha))
                     
-                    if delta[0] > nu:
+                    if delta.item() > nu:
                         h = np.vstack((a_old, -gam))
-                        dkk = (a_old.T * (k_old - (2 * gam * k))) + (gam2 * kk[0])
+                        dkk = np.matmul(np.transpose(a_old), (k_old - (2 * gam * k))) + (gam2 * kk.item())
                         c = (coef * np.vstack((c_old, 0))) + h - np.vstack((C * dk, 0))
-                        s = ((1 + gam2) * sig2) + dkk - (dk.T * C * dk) + (2 * coef * c_old.T * dk) - (gam * sig2 * coef)
+                        arbi = np.dot(np.atleast_2d(C), dk)
+                        s = ((1 + gam2) * sig2) + dkk - np.dot(dk.T, arbi) + (
+                            2 * coef * np.matmul(c_old.T, dk)) - (gam * sig2 * coef)
                         alpha = np.vstack((alpha, 0))
-                        C = np.Vstack((np.hstack((C, z)), np.hstack((z.T, 0))))
+                        C = np.vstack((np.hstack((C, z)), np.hstack((z.T, 0))))
                         statedic.append(state)
                         scr_dic.append(scr)
                         invG_scr_dic.append(invG_scr)
                         
                         m = m + 1
-                        Kinv = (1 / delta[0]) * np.vstack((np.hstack(((delta[0] * Kinv) + (a * a.T), (-1 * a))),
-                                                   np.hstack(((-1 * a.T) , 1))
+                        Kinv = (1 / delta.item()) * np.vstack((
+                            np.hstack(((delta.item() * Kinv) + (a * a.T), (-1 * a))), np.hstack(((-1 * a.T) , 1))
                                                    ))
                         # Kinv = (1/delta[0]) * [[(delta[0] * Kinv) + (a * np.transpose(a)), -1 * a],
                         #         [np.transpose(-1 * a)                      , 1]]
                         a = np.vstack((z, 1))
                         z = np.vstack((z, 0)) # [[z], [0]]
-                        k = np.vstack((k, kk[0])) # [[k], [kk]]
+                        k = np.vstack(k, kk.item()) # [[k], [kk]]
                         
                     else:#delta <= nu
                         h = a_old - (gam * a)
-                        dkk = np.transpose(h) * dk
-                        c = (coef * c_old) + h - (C * dk)
-                        s = ((1-gam2) * sig2) + (np.transpose(dk) * (c + (coef * c_old))) - (
+                        dkk = np.matmul(np.transpose(h), dk)
+                        c = (coef * c_old) + h - np.dot(np.atleast_2d(C), dk)
+                        s = ((1-gam2) * sig2) + np.matmul(np.transpose(dk), (c + (coef * c_old))) - (
                             gam * sig2 * coef)
                 
                 #Alpha update
-                alpha = alpha + (c * (d / s))
+                alpha = alpha + np.matmul(c, (d / s.item()))
                 #C update
-                C = C + (c * (np.transpose(c) / s))
+                C = C + np.matmul(c, (np.transpose(c) / s.item()))
                 
                 #Update time counters
                 t = t + 1
                 T = T + 1
         
         #For all the fuss we went through, FINALLY!
-        grad = ck_xa * (scr_dic * alpha)
+        grad = ck_xa * (hstack(scr_dic) @ alpha)
         
         return grad
                             
