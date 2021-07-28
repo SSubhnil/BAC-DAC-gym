@@ -13,7 +13,8 @@ environmrnt in GYM.
 import numpy as np
 from numpy import matlib as mb
 import math
-from scipy.spatial.distance import cdist
+from pydist2.distance import pdist2
+from scipy.spatial import distance
 
 class mountain_car_continuous_v0:
     def __init__(self, gym_env, **kwargs):#Initialize Domain Parameters
@@ -126,24 +127,22 @@ class mountain_car_continuous_v0:
     
     
     def kernel_kx(self, state, statedic, domain_params):
-        sigk_x = 1;
-        ck_x = 1;
-        x = np.transpose(state[0]);
+        sigk_x = 1
+        ck_x = 1
+        x = state[0]
         xdic = []
         # Possible conflict at concatenation
         for i in range(0, len(statedic)):
             xdic.append(statedic[i][0].reshape((2, 1))) ## The shape is v-important
         xdic = np.hstack(xdic)
-
-        y = np.multiply(np.vstack([self.c_map_pos[0][0], self.c_map_vel[0][0]]), x)### We will see
         arbitrary = np.vstack([self.c_map_pos[0][0], self.c_map_vel[0][0]])
-        ydic = np.multiply(mb.repmat(arbitrary, 1, np.shape(xdic)[1]), xdic)
-        
+        y = np.multiply(arbitrary, x)### We will see
+        ydic = mb.repmat(arbitrary, 1, np.shape(xdic)[1]) * xdic
         # Element-wise squaring of Euclidean pair-wise distance
-        temp = cdist(np.transpose(y),np.transpose(ydic))**2
-        kx = ck_x * np.exp(-temp / (2 * sigk_x*sigk_x))
-        
-        return kx
+        #Need to install pdist python package 
+        temp = distance.cdist(np.transpose(y), np.transpose(ydic)) ** 2
+        kx = ck_x * np.exp((-1 * temp) / (2 * sigk_x*sigk_x))
+        return np.squeeze(kx)
     
     def kernel_kxx(self, state, domain_params):
         kxx = 1
@@ -193,9 +192,8 @@ class mountain_car_continuous_v0:
             [[(self.c_map_pos[0][0] * x[0]) + self.c_map_pos[1][0]],
              [(self.c_map_vel[0][0] * x[1]) + self.c_map_vel[1][0]]]
             ).reshape((2, 1))
-        x = np.vstack(x)
         # We will use "state" as a list object         
-        state = [x, y]
+        state = [x.reshape((2, 1)), y]
         return state
     
     def dynamics(self, state, a_old, domain_params):

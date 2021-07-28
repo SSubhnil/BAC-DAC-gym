@@ -7,7 +7,7 @@ Created on Fri Jun 25 18:58:44 2021
 
 import numpy as np
 import math
-from scipy.sparse import csr_matrix, linalg, hstack
+from scipy.sparse import csr_matrix, linalg, hstack, vstack
 import pandas as pd
 
 
@@ -84,8 +84,8 @@ class BAC_main:
                             if done == False:
                                 # state, _ = d.dynamics(state, a, d)
                                 # state = d.is_goal(state, d)
-                                state[0], reward, done, _ = self.gym_env.step(np.array([a]))
-                                state = d.c_map_eval(state[0])
+                                x_now, reward, done, _ = self.gym_env.step(np.array([a]))
+                                state = d.c_map_eval(x_now)
                                 state.append(done)
                                 reward1 += reward1
                                 reward2 -= 1
@@ -156,7 +156,7 @@ class BAC_main:
         C = np.array([0])
         Kinv = np.array([0])
         k = np.array([0])
-        c = np.array([0])
+        c = np.zeros((0, 0))
         z = np.array([0])
         
         for l in range(1, learning_params.num_episode):
@@ -178,7 +178,7 @@ class BAC_main:
             kk = temp1 + temp2 # kk is always a scalar but returned as 1x1 array.
             
             if m > 0:
-                k = ck_xa * (scrT @ hstack(invG_scr_dic)) #State-action kernel -- Fisher Information Kernel
+                k = ck_xa * (scrT @ hstack(invG_scr_dic[:])) #State-action kernel -- Fisher Information Kernel
                 k = np.vstack(k + domain_params.kernel_kx(state, statedic, domain_params))
                 
                 a = np.matmul(Kinv, k)
@@ -232,7 +232,7 @@ class BAC_main:
                     c = np.vstack((c, 0)) 
                 statedic.append(state)
                 scr_dic.append(scr)
-                invG_scr_dic.append(invG_scr)
+                invG_scr_dic.append(vstack(invG_scr))
                 m = m + 1
                 k = np.vstack((k, kk.item()))
         
@@ -255,9 +255,9 @@ class BAC_main:
                     dk = k_old
                     dkk = kk_old
                     h = a_old
-                    c = (coef * c_old) + h - np.matmul(np.atleast_2d(C), dk)
-                    s = sig2 - (gam * sig2 * coef) + np.matmul(dk.T, c + (coef * c_old))
-                    d = (coef * d_old) + r - np.dot(dk, np.atleast_2d(alpha))
+                    c = (coef * c_old) + h - np.dot(np.atleast_2d(C), dk)
+                    s = sig2 - (gam * sig2 * coef) + np.dot(dk.T, c + (coef * c_old))
+                    d = (coef * d_old) + r - np.dot(dk.T, np.atleast_2d(alpha))
                 
                 #Non-goal update    
                 else:
@@ -274,19 +274,24 @@ class BAC_main:
                     invG_scr = linalg.spsolve(G, scr)
                     temp2 = ck_xa * (scrT @ invG_scr)
                     kk = temp1 + temp2 # kk is always a 'scalar'
-                    
-                    k = ck_xa * (scrT @ np.hstack(invG_scr_dic))
-                    k = np.vstack(k + domain_params.kernel_kx(state, statedic, domain_params))
+                    k = ck_xa * (scrT @ hstack(invG_scr_dic[:]))
+                    print("k",k)
+                    k = k + domain_params.kernel_kx(state, statedic, domain_params)
+                    k = np.vstack(k)
                     
                     a = np.matmul(Kinv, k)
                     delta = kk - np.matmul(np.transpose(k), a) # delta should be a 'scalar'
                     
                     dk = k_old - (gam * k)
-                    d = (coef * d_old) + r - np.dot(dk, np.atleast_2d(alpha))
+                    if len(alpha) > 1:
+                        pass
+                    else:
+                        alpha = np.ones(np.shape(dk))
+                    d = (coef * d_old) + r - np.dot(dk.T, np.atleast_2d(alpha))
                     
                     if delta.item() > nu:
                         h = np.vstack((a_old, -gam))
-                        dkk = np.matmul(np.transpose(a_old), (k_old - (2 * gam * k))) + (gam2 * kk.item())
+                        dkk = np.dot(np.transpose(a_old), (k_old - (2 * gam * k))) + (gam2 * kk.item())
                         c = (coef * np.vstack((c_old, 0))) + h - np.vstack((C * dk, 0))
                         arbi = np.dot(np.atleast_2d(C), dk)
                         s = ((1 + gam2) * sig2) + dkk - np.dot(dk.T, arbi) + (
@@ -295,7 +300,7 @@ class BAC_main:
                         C = np.vstack((np.hstack((C, z)), np.hstack((z.T, 0))))
                         statedic.append(state)
                         scr_dic.append(scr)
-                        invG_scr_dic.append(invG_scr)
+                        invG_scr_dic.append(vstack(invG_scr))
                         
                         m = m + 1
                         Kinv = (1 / delta.item()) * np.vstack((
@@ -310,14 +315,24 @@ class BAC_main:
                     else:#delta <= nu
                         h = a_old - (gam * a)
                         dkk = np.matmul(np.transpose(h), dk)
-                        c = (coef * c_old) + h - np.dot(np.atleast_2d(C), dk)
-                        s = ((1-gam2) * sig2) + np.matmul(np.transpose(dk), (c + (coef * c_old))) - (
+                        prod1 = np.atleast_2d(coef * c_old)
+                        if len(prod1) == 0:
+                            prod1 = np.zeros((np.shape(h)))
+                            
+                        # print(C, dk)
+                        if np.shape(C) > (1, 1):
+                            prod2 = np.dot(np.atleast_2d(C), dk)
+                        else:
+                            prod2 = C * dk
+
+                        c = prod1 + h - prod2
+                        s = np.dot(dk.T, c + prod1) + ((1-gam2) * sig2) - (
                             gam * sig2 * coef)
                 
                 #Alpha update
-                alpha = alpha + np.matmul(c, (d / s.item()))
+                alpha = alpha + c * (d.item() / s.item())
                 #C update
-                C = C + np.matmul(c, (np.transpose(c) / s.item()))
+                C = C + np.matmul(c, np.transpose(c) / s.item())
                 
                 #Update time counters
                 t = t + 1
