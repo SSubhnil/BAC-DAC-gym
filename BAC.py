@@ -27,6 +27,7 @@ class BAC_main:
         learning_params = self.learning_params
         num_output = (learning_params.num_update_max / learning_params.sample_interval)
         perf = np.zeros((math.ceil(num_output), 3))
+        evalpoint = 0
         
         Pandas_dataframe = pd.DataFrame(np.zeros((learning_params.num_update_max, 6)))
         Pandas_dataframe = Pandas_dataframe.astype('object')
@@ -46,16 +47,17 @@ class BAC_main:
                                                                  (learning_params.alp_update_param + 
                                                                   (np.arange(1,(learning_params.num_update_max + 1)) - 1)))
             
-            for j in range(0, learning_params.num_update_max + 1):
+            for j in range(0, learning_params.num_update_max):
                 
                 reward1 = 0
                 reward2 = 0
                 # Policy evaluation after every n(sample_interval) policy updates
                 if (j % (learning_params.sample_interval)) == 0:
-                    evalpoint = math.floor(j / learning_params.sample_interval)
+                    # evalpoint = math.floor(j / learning_params.sample_interval)
                     perf[evalpoint, 0], perf[evalpoint, 1], perf[evalpoint, 2] = d.perf_eval(theta, d, learning_params)
+                    evalpoint += 1
                     # perf_eval() returns perf, reward1, reward2
-                    
+                
                 G = csr_matrix((d.num_policy_param, d.num_policy_param), dtype = np.float32)
                 
                 # Run num_episode episodes for BAC Gradient evaluation
@@ -125,6 +127,8 @@ class BAC_main:
                 self.data[j] = np.array([j+1, mae, mse, alp, reward1, reward2])
                 self.grad_store.append(grad_BAC)
                 self.policy_store.append(theta)
+                
+                print("Completed updates:", j + 1,"/", learning_params.num_update_max)
                 
             Pandas_dataframe = pd.DataFrame({"Episode Batch":self.data[:, 0],
                                      "Learning Rate":self.data[:, 3], "Mean Absolute Error":self.data[:, 1],
