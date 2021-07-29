@@ -179,13 +179,13 @@ class BAC_main:
             
             if m > 0:
                 k = ck_xa * (scrT @ hstack(invG_scr_dic[:])) #State-action kernel -- Fisher Information Kernel
-                k = np.vstack(k + domain_params.kernel_kx(state, statedic, domain_params))
+                k = np.transpose(k.toarray() + domain_params.kernel_kx(state, statedic, domain_params))
                 
-                a = np.matmul(Kinv, k)
-                delta = kk - np.matmul(np.transpose(k), a) # delta should be a 'scalar'
+                a = np.dot(Kinv, k)
+                delta = kk - np.dot(np.transpose(k), a) # delta should be a 'scalar'
             else:
-                k = np.array([0])
-                a = np.array([0])
+                k = np.zeros((0, 0))
+                a = np.zeros((0, 0))
                 delta = kk
             # delta cocmes out to be a 1x1 array which must be changed to scalar
             # hence we use delta[0] and kk[0]
@@ -218,10 +218,13 @@ class BAC_main:
                 else:
                     C = np.array([0])
                 
-                
-                Kinv = (1 / delta.item()) * np.vstack((np.hstack(((delta.item() * Kinv) + (a_hat * a_hat.T), (-1 * a_hat))),
-                                                   np.hstack(((-1 * a_hat.T) , 1))
-                                                   ))
+                if len(a_hat) > 0:
+                    Kinv = (1 / delta.item()) * np.vstack((
+                        np.hstack(((delta.item() * Kinv) + (a_hat * a_hat.T), (-1 * a_hat))),
+                        np.hstack(((-1 * a_hat.T) , 1))
+                        ))
+                else:
+                    Kinv = 1 / delta.item()
                 
                 # [[z], [0]]
                 if len(z) > 1:
@@ -234,7 +237,11 @@ class BAC_main:
                 scr_dic.append(scr)
                 invG_scr_dic.append(vstack(invG_scr))
                 m = m + 1
-                k = np.vstack((k, kk.item()))
+                
+                if len(k) > 0:
+                    k = np.vstack((k, kk.item()))
+                else:
+                    k = np.array([kk.item()])
         
             #Time-loop
             while (t < episodes[2]):
@@ -275,12 +282,13 @@ class BAC_main:
                     temp2 = ck_xa * (scrT @ invG_scr)
                     kk = temp1 + temp2 # kk is always a 'scalar'
                     k = ck_xa * (scrT @ hstack(invG_scr_dic[:]))
-                    print("k",k)
-                    k = k + domain_params.kernel_kx(state, statedic, domain_params)
-                    k = np.vstack(k)
                     
-                    a = np.matmul(Kinv, k)
-                    delta = kk - np.matmul(np.transpose(k), a) # delta should be a 'scalar'
+                    # Looping over elements of k and kerne_kx
+                    # Cannot directly add scalar and sparse matrix
+                    k = k.toarray() + domain_params.kernel_kx(state, statedic, domain_params)
+                    k = np.transpose(k)
+                    a = np.dot(np.squeeze(Kinv), np.squeeze(k))
+                    delta = kk - np.dot(np.transpose(k), a) # delta should be a 'scalar'
                     
                     dk = k_old - (gam * k)
                     if len(alpha) > 1:
@@ -303,9 +311,13 @@ class BAC_main:
                         invG_scr_dic.append(vstack(invG_scr))
                         
                         m = m + 1
-                        Kinv = (1 / delta.item()) * np.vstack((
-                            np.hstack(((delta.item() * Kinv) + (a * a.T), (-1 * a))), np.hstack(((-1 * a.T) , 1))
-                                                   ))
+                        if len(a) > 0:
+                            Kinv = (1 / delta.item()) * np.vstack((
+                                np.hstack(((delta.item() * Kinv) + (a * a.T), (-1 * a))),
+                                np.hstack(((-1 * a.T) , 1))
+                                ))
+                        else:
+                            Kinv = 1 / delta.item()
                         # Kinv = (1/delta[0]) * [[(delta[0] * Kinv) + (a * np.transpose(a)), -1 * a],
                         #         [np.transpose(-1 * a)                      , 1]]
                         a = np.vstack((z, 1))
@@ -314,7 +326,7 @@ class BAC_main:
                         
                     else:#delta <= nu
                         h = a_old - (gam * a)
-                        dkk = np.matmul(np.transpose(h), dk)
+                        dkk = np.dot(np.transpose(h), dk)
                         prod1 = np.atleast_2d(coef * c_old)
                         if len(prod1) == 0:
                             prod1 = np.zeros((np.shape(h)))

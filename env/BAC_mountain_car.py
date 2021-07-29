@@ -13,7 +13,6 @@ environmrnt in GYM.
 import numpy as np
 from numpy import matlib as mb
 import math
-from pydist2.distance import pdist2
 from scipy.spatial import distance
 
 class mountain_car_continuous_v0:
