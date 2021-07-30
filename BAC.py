@@ -302,7 +302,7 @@ class BAC_main:
                     if delta.item() > nu:
                         h = np.vstack((a_old, -gam))
                         dkk = np.dot(np.transpose(a_old), (k_old - (2 * gam * k))) + (gam2 * kk.item())
-                        c = (coef * np.vstack((c_old, 0))) + h - np.vstack((C * dk, 0))
+                        c = (coef * np.vstack((c_old, 0))) + h - np.vstack((np.dot(C, dk), 0))
                         arbi = np.dot(np.atleast_2d(C), dk)
                         s = ((1 + gam2) * sig2) + dkk - np.dot(dk.T, arbi) + (
                             2 * coef * np.dot(c_old.T, dk)) - (gam * sig2 * coef)
