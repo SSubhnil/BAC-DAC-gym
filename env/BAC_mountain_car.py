@@ -14,7 +14,7 @@ import numpy as np
 from numpy import matlib as mb
 import math
 from scipy.spatial import distance
-
+ 
 class mountain_car_continuous_v0:
     def __init__(self, gym_env, **kwargs):#Initialize Domain Parameters
         #Initialize the environment variables and parameter functions.
@@ -65,6 +65,9 @@ class mountain_car_continuous_v0:
         self.num_policy_param = self.NUM_STATE_FEATURES * self.NUM_ACT
         self.STEP = 1
         
+        self.prng = np.random.RandomState()
+        self.prng.seed(2)
+        
     def calc_score(self, theta, state):
         """
         Description-----
@@ -107,8 +110,7 @@ class mountain_car_continuous_v0:
             
         mu = mu / sum(mu)
         
-        np.random.seed(13)
-        tmp2 = np.random.uniform(low=0.0, high = 1.0)
+        tmp2 = self.prng.rand()
         
         # Added some randomness is the action value. a * tmp2
         if tmp2 < mu[0]:

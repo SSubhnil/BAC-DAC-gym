@@ -163,7 +163,6 @@ class BAC_main:
         C = np.array(None, dtype = np.float64)
         Kinv = np.array(None, dtype = np.float64)
         k = np.array(None, dtype = np.float64)
-        c = np.array(None, dtype = np.float64)
         z = np.array(None, dtype = np.float64)
         
         for l in range(1, learning_params.num_episode):
@@ -191,36 +190,50 @@ class BAC_main:
                 a = np.dot(Kinv, k)
                 delta = kk - np.dot(np.transpose(k), a) # delta should be a 'scalar'
             else:
-                k = np.array(None, dtype = np.float64)
-                a = np.array(None, dtype = np.float64)
+                k = np.array([None], dtype = np.float64)
+                a = np.array([None], dtype = np.float64)
                 delta = kk
             # delta cocmes out to be a 1x1 array which must be changed to scalar
             # hence we use delta[0] and kk[0]
             if m == 0 or delta.item() > nu:
                 a_hat = a
                 h = np.vstack([a, -gam]) # h = [[a], [-gam]]
+                if np.isnan(h[0][0]):
+                    h = h[1:]
                     
                 # a = [[z], [1]]
                 a = np.vstack([z, 1])
+                if np.isnan(a[0][0]):
+                    a = a[1:]
                     
                 # alpha = [[alpha], [0]]
                 alpha = np.vstack([alpha, 0])
+                if np.isnan(alpha[0][0]):
+                    alpha = alpha[1:]
                                 
                 # C = [[C, z], [np.transpose(z), 0]]
                 C = np.block([[C, z], [np.transpose(z), 0]])
+                if np.isnan(C[0][0]):
+                    C = C[1:, 1:]
                 
                 # Kinv = [(delta * Kinv) + (a_hat * a_hat'), -a_hat;
                 #         -a_hat'                          , 1] / delta
                 Kinv = (1 / delta.item()) * np.block([[(delta.item() * Kinv) + (a_hat * a_hat.T), (-1 * a_hat)],
                                                       [(-1 * a_hat.T) , 1]
                                                       ])
+                if np.isnan(Kinv[0][0]):
+                    Kinv = Kinv[1:, 1:]
                 print("Kinv 1:", Kinv)
                 
                 # z = [[z], [0]]
                 z = np.vstack([z, 0])
+                if np.isnan(z[0][0]):
+                    z = z[1:]
                 
                 # c = [[c], [0]]
                 c = np.vstack([c, 0])
+                if np.isnan(c[0][0]):
+                    c = c[1:]
                 
                 statedic.append(state)
                 scr_dic.append(scr)
@@ -229,13 +242,19 @@ class BAC_main:
                 
                 # k = [[k], [kk]]
                 k = np.vstack([k, kk.item()])
+                if np.isnan(k[0][0]):
+                    k = k[1:]
         
             #Time-loop
             while (t < episodes[2]):
                 state_old = state
                 k_old = k
+                if np.isnan(k_old[0][0]) and len(k) != 1:
+                    k_old = k_old[1:]
                 kk_old = kk.item()
                 a_old = a
+                if np.isnan(a_old[0][0]) and np.shape(a_old) != (1,):
+                    a_old = a_old[1:]
                 c_old = c
                 s_old = s
                 d_old = d
@@ -278,10 +297,6 @@ class BAC_main:
                     delta = kk - np.dot(np.transpose(k), a) # delta should be a 'scalar'
                     
                     dk = k_old - (gam * k)
-                    if len(alpha) > 1:
-                        pass
-                    else:
-                        alpha = np.ones(np.shape(dk))
                     d = (coef * d_old) + r - np.dot(dk.T, np.atleast_2d(alpha))
                     
                     if delta.item() > nu:
@@ -313,6 +328,8 @@ class BAC_main:
                         k = np.vstack([k, kk.item()]) # [[k], [kk]]
                         
                     else:#delta <= nu
+                        if np.isnan(a[0][0]):
+                            a = a[1:]
                         h = a_old - (gam * a)
                         dkk = np.dot(np.transpose(h), dk)
                         prod1 = np.atleast_2d(coef * c_old)
