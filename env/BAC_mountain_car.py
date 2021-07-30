@@ -101,7 +101,7 @@ class mountain_car_continuous_v0:
                                    phi_x.reshape(len(phi_x))])
             
             phi_xa = phi_xa.reshape(len(phi_x)+self.NUM_STATE_FEATURES)
-            lol = np.matmul(phi_xa, theta)
+            lol = np.dot(phi_xa, theta)
                 
             mu[tt] = np.exp(lol)
             
@@ -112,12 +112,12 @@ class mountain_car_continuous_v0:
         
         # Added some randomness is the action value. a * tmp2
         if tmp2 < mu[0]:
-            a = self.ACT[0] * tmp2
+            a = self.ACT[0] #* tmp2
             scr = np.append(phi_x * (1 - mu[0]),
                             -phi_x * mu[1], axis = 0)
     
         else:
-            a = self.ACT[-1] * tmp2
+            a = self.ACT[-1] #* tmp2
             scr = np.append(-phi_x * mu[0],
                             phi_x * (1 - mu[1]), axis = 0)#.reshape((1, len(phi_x)*2))
         
@@ -154,7 +154,7 @@ class mountain_car_continuous_v0:
         """
         step_avg = 0
         
-        for l in range(self.num_episode_eval):
+        for l in range(0, self.num_episode_eval):
             t = 0
             env_current_state = self.gym_env.reset()
             state = self.c_map_eval(env_current_state)
@@ -171,10 +171,10 @@ class mountain_car_continuous_v0:
                     if done == 0:
                         #state, _ = self.dynamics(state, a, self)
                         #state = self.is_goal(state, self)
-                        state[0], reward1, done, _ = self.gym_env.step(np.array([a])) ### Fix this array methods
+                        state[0], reward, done, _ = self.gym_env.step(np.array([a])) ### Fix this array methods
                         state = self.c_map_eval(state[0])
                         state.append(done)
-                        reward1 += reward1 ## Reward accumulated by Gym
+                        reward1 += reward ## Reward accumulated by Gym
                         reward2 -= 1 ## User defined reward
                 a, _ = self.calc_score(theta, state)
                 t = t + 1

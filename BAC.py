@@ -17,7 +17,7 @@ class BAC_main:
         self.gym_env = gym_env
         self.domain = domain
         self.learning_params = learning_params
-        self.data = np.zeros((self.learning_params.num_update_max, 6))
+        self.data = np.zeros((self.learning_params.num_update_max, 7))
         self.grad_store = []
         self.policy_store = []
         
@@ -48,9 +48,9 @@ class BAC_main:
                                                                   (np.arange(1,(learning_params.num_update_max + 1)) - 1)))
             
             for j in range(0, learning_params.num_update_max):
-                
-                reward1 = 0
-                reward2 = 0
+                batch_runtime = 0
+                reward1 = 0 # Gym Reward
+                reward2 = 0 # User defined reward
                 # Policy evaluation after every n(sample_interval) policy updates
                 if (j % (learning_params.sample_interval)) == 0:
                     # evalpoint = math.floor(j / learning_params.sample_interval)
@@ -89,7 +89,7 @@ class BAC_main:
                                 x_now, reward, done, _ = self.gym_env.step(np.array([a]))
                                 state = d.c_map_eval(x_now)
                                 state.append(done)
-                                reward1 += reward1
+                                reward1 += reward
                                 reward2 -= 1
                         
                         # G is a N x N matrix. We do outer product of scr
@@ -109,6 +109,8 @@ class BAC_main:
                     # Create the batch data of num_episode episodes
                     # to be given for gradient estimation
                     episodes = (episode_states, episode_scores, t)
+                    batch_runtime += t
+                    
                 
                 #Fix the identity matrix
                 G = G + 1e-6 * np.identity(G.shape[0])
@@ -119,12 +121,13 @@ class BAC_main:
                 else:
                     alp = learning_params.alp_init_BAC
                 
+                avg_episode_length = batch_runtime / learning_params.num_episode
                 theta = theta + (alp * grad_BAC)
                 error = state[0][0][0] - self.gym_env.observation_space.high[0]
                 mae = abs(error)/(j+1)
                 mse = math.pow(error, 2)/(j+1)
                 # Data storing in self.data
-                self.data[j] = np.array([j+1, mae, mse, alp, reward1, reward2])
+                self.data[j] = np.array([j+1, mae, mse, alp, reward1, reward2, avg_episode_length])
                 self.grad_store.append(grad_BAC)
                 self.policy_store.append(theta)
                 
@@ -133,8 +136,8 @@ class BAC_main:
             Pandas_dataframe = pd.DataFrame({"Episode Batch":self.data[:, 0],
                                      "Learning Rate":self.data[:, 3], "Mean Absolute Error":self.data[:, 1],
                                      "Mean Squared Error":self.data[:, 2], "Batch Gym Reward":self.data[:, 4],
-                                     "Batch User Reward":self.data[:, 5], "BAC Gradient":self.grad_store,
-                                     "Policy Evolution":self.policy_store})
+                                     "Batch User Reward":self.data[:, 5], "Avg. Episode Length (t)":self.data[:, 6],
+                                     "BAC Gradient":self.grad_store, "Policy Evolution":self.policy_store})
             perf_dataframe = pd.DataFrame({"BAC Evaluation Batch":perf[:,0], "Gym Batch Reward":perf[:,1],
                                            "User Defined Batch Reward":perf[:,2]})
         return perf_dataframe, theta, Pandas_dataframe
@@ -156,12 +159,12 @@ class BAC_main:
         statedic = []
         scr_dic = []
         invG_scr_dic = []
-        alpha = np.array([0])
-        C = np.array([0])
-        Kinv = np.array([0])
-        k = np.array([0])
-        c = np.zeros((0, 0))
-        z = np.array([0])
+        alpha = np.array(None, dtype = np.float64)
+        C = np.array(None, dtype = np.float64)
+        Kinv = np.array(None, dtype = np.float64)
+        k = np.array(None, dtype = np.float64)
+        c = np.array(None, dtype = np.float64)
+        z = np.array(None, dtype = np.float64)
         
         for l in range(1, learning_params.num_episode):
             ISGOAL = 0
@@ -188,64 +191,44 @@ class BAC_main:
                 a = np.dot(Kinv, k)
                 delta = kk - np.dot(np.transpose(k), a) # delta should be a 'scalar'
             else:
-                k = np.zeros((0, 0))
-                a = np.zeros((0, 0))
+                k = np.array(None, dtype = np.float64)
+                a = np.array(None, dtype = np.float64)
                 delta = kk
             # delta cocmes out to be a 1x1 array which must be changed to scalar
             # hence we use delta[0] and kk[0]
-            if m == 0 or delta[0] > nu:
+            if m == 0 or delta.item() > nu:
                 a_hat = a
-                
-                # h = [[a], [-gam]]
-                if len(a) > 1:
-                    h = np.vstack((a, -gam)) 
-                else:
-                    h = np.array([-gam])
+                h = np.vstack([a, -gam]) # h = [[a], [-gam]]
                     
                 # a = [[z], [1]]
-                if len(z) > 1:
-                    a = np.vstack((z, 1))
-                else:
-                    a = np.array([1])
+                a = np.vstack([z, 1])
                     
                 # alpha = [[alpha], [0]]
-                if len(alpha) > 1:
-                    alpha = np.vstack((alpha, 0))
-                else:
-                    alpha = np.array([1])
+                alpha = np.vstack([alpha, 0])
                                 
-                # [[C, z], [np.transpose(z), 0]]
-                if np.shape(C)[0] != 0 and len(z) > 1:
-                    C = np.vstack((
-                        np.hstack((C, z)), np.hstack((z.T, 0))
-                        ))
-                else:
-                    C = np.array([0])
+                # C = [[C, z], [np.transpose(z), 0]]
+                C = np.block([[C, z], [np.transpose(z), 0]])
                 
-                if len(a_hat) > 0:
-                    Kinv = (1 / delta.item()) * np.vstack((
-                        np.hstack(((delta.item() * Kinv) + (a_hat * a_hat.T), (-1 * a_hat))),
-                        np.hstack(((-1 * a_hat.T) , 1))
-                        ))
-                else:
-                    Kinv = 1 / delta.item()
+                # Kinv = [(delta * Kinv) + (a_hat * a_hat'), -a_hat;
+                #         -a_hat'                          , 1] / delta
+                Kinv = (1 / delta.item()) * np.block([[(delta.item() * Kinv) + (a_hat * a_hat.T), (-1 * a_hat)],
+                                                      [(-1 * a_hat.T) , 1]
+                                                      ])
+                print("Kinv 1:", Kinv)
                 
-                # [[z], [0]]
-                if len(z) > 1:
-                    z = np.vstack((z, 0))
+                # z = [[z], [0]]
+                z = np.vstack([z, 0])
                 
-                # [[c], [0]]
-                if len(c) > 1:
-                    c = np.vstack((c, 0)) 
+                # c = [[c], [0]]
+                c = np.vstack([c, 0])
+                
                 statedic.append(state)
                 scr_dic.append(scr)
                 invG_scr_dic.append(vstack(invG_scr))
                 m = m + 1
                 
-                if len(k) > 0:
-                    k = np.vstack((k, kk.item()))
-                else:
-                    k = np.array([kk.item()])
+                # k = [[k], [kk]]
+                k = np.vstack([k, kk.item()])
         
             #Time-loop
             while (t < episodes[2]):
@@ -291,7 +274,7 @@ class BAC_main:
                     # Cannot directly add scalar and sparse matrix
                     k = k.toarray() + domain_params.kernel_kx(state, statedic, domain_params)
                     k = np.transpose(k)
-                    a = np.dot(np.squeeze(Kinv), np.squeeze(k))
+                    a = np.dot(Kinv, k)
                     delta = kk - np.dot(np.transpose(k), a) # delta should be a 'scalar'
                     
                     dk = k_old - (gam * k)
@@ -307,43 +290,46 @@ class BAC_main:
                         c = (coef * np.vstack((c_old, 0))) + h - np.vstack((C * dk, 0))
                         arbi = np.dot(np.atleast_2d(C), dk)
                         s = ((1 + gam2) * sig2) + dkk - np.dot(dk.T, arbi) + (
-                            2 * coef * np.matmul(c_old.T, dk)) - (gam * sig2 * coef)
-                        alpha = np.vstack((alpha, 0))
-                        C = np.vstack((np.hstack((C, z)), np.hstack((z.T, 0))))
+                            2 * coef * np.dot(c_old.T, dk)) - (gam * sig2 * coef)
+                        
+                        alpha = np.vstack([alpha, 0])
+                        # C = [[C, z], [np.transpose(z), 0]]
+                        
+                        C = C = np.block([[C, z], [np.transpose(z), 0]])
                         statedic.append(state)
                         scr_dic.append(scr)
                         invG_scr_dic.append(vstack(invG_scr))
                         
                         m = m + 1
-                        if len(a) > 0:
-                            Kinv = (1 / delta.item()) * np.vstack((
-                                np.hstack(((delta.item() * Kinv) + (a * a.T), (-1 * a))),
-                                np.hstack(((-1 * a.T) , 1))
-                                ))
-                        else:
-                            Kinv = 1 / delta.item()
                         # Kinv = (1/delta[0]) * [[(delta[0] * Kinv) + (a * np.transpose(a)), -1 * a],
                         #         [np.transpose(-1 * a)                      , 1]]
-                        a = np.vstack((z, 1))
-                        z = np.vstack((z, 0)) # [[z], [0]]
-                        k = np.vstack(k, kk.item()) # [[k], [kk]]
+                        Kinv = (1 / delta.item()) * np.block([[(delta.item() * Kinv) + np.matmul(a, a.T), (-1 * a)],
+                                                      [(-1 * a.T) , 1]
+                                                      ])
+                        print("Kinv 2:", Kinv)
+                        
+                        a = np.vstack([z, 1])
+                        z = np.vstack([z, 0]) # [[z], [0]]
+                        k = np.vstack([k, kk.item()]) # [[k], [kk]]
                         
                     else:#delta <= nu
                         h = a_old - (gam * a)
                         dkk = np.dot(np.transpose(h), dk)
                         prod1 = np.atleast_2d(coef * c_old)
                         if len(prod1) == 0:
-                            prod1 = np.zeros((np.shape(h)))
-                            
+                            prod1 = np.zeros(np.shape(h))
+                        
+                        
                         # print(C, dk)
                         if np.shape(C) > (1, 1):
                             prod2 = np.dot(np.atleast_2d(C), dk)
                         else:
                             prod2 = C * dk
-
                         c = prod1 + h - prod2
-                        s = np.dot(dk.T, c + prod1) + ((1-gam2) * sig2) - (
+                        s = np.dot(np.transpose(dk), c + prod1) + ((1-gam2) * sig2) - (
                             gam * sig2 * coef)
+                        
+                       
                 
                 #Alpha update
                 alpha = alpha + c * (d.item() / s.item())
