@@ -182,17 +182,17 @@ class BAC_main:
             invG_scr = vstack(invG_scr)
             temp2 = ck_xa * (scrT @ invG_scr)
             kk = temp1 + temp2.toarray() # kk is always a scalar but returned as 1x1 array
-            print("kk:", kk)
+            # print("kk:", kk)
             
             if m > 0:
                 k = ck_xa * (scrT @ hstack(invG_scr_dic[:])) #State-action kernel -- Fisher Information Kernel
                 k = np.transpose(k.toarray() + domain_params.kernel_kx(state, statedic, domain_params))
                 a = np.dot(Kinv, k)
                 goop = np.dot(np.transpose(k), a)
-                print("goop:", goop)
+                # print("goop:", goop)
                 delta = kk - goop # delta should be a 'scalar'
-                print("Here 1 a:", a)
-                print("delta:", delta)
+                # print("Here 1 a:", a)
+                # print("delta:", delta)
                 
             else:
                 k = np.array(None, dtype = np.float16)
@@ -228,7 +228,7 @@ class BAC_main:
                                                       ])
                 if np.isnan(Kinv[0][0]):
                     Kinv = Kinv[1:, 1:]
-                print("Kinv 1:", Kinv)
+                # print("Kinv 1:", Kinv)
                 
                 # z = [[z], [0]]
                 z = np.vstack([z, 0])

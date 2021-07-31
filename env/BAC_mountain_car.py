@@ -85,7 +85,7 @@ class mountain_car_continuous_v0:
         
         #feature values
         phi_x = np.zeros((self.NUM_STATE_FEATURES, 1))
-        mu = np.zeros((self.NUM_ACT, 1))
+        mu = np.zeros(self.NUM_ACT)
         tmp1 = np.zeros((2, 1))
         
         for tt in range(0, self.NUM_STATE_FEATURES):
@@ -135,8 +135,8 @@ class mountain_car_continuous_v0:
             xdic.append(statedic[i][0].reshape((2, 1))) ## The shape is v-important
         xdic = np.hstack(xdic)
         arbitrary = np.vstack([self.c_map_pos[0][0], self.c_map_vel[0][0]])
-        y = np.dot(arbitrary, x)### We will see
-        ydic = mb.repmat(arbitrary, 1, np.shape(xdic)[1]) * xdic
+        y = np.multiply(arbitrary, x)### We will see
+        ydic = np.multiply(mb.repmat(arbitrary, 1, np.shape(xdic)[1]),  xdic)
         # Element-wise squaring of Euclidean pair-wise distance
         #Need to install pdist python package 
         temp = distance.cdist(np.transpose(y), np.transpose(ydic)) ** 2
