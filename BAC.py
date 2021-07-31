@@ -7,7 +7,7 @@ Created on Fri Jun 25 18:58:44 2021
 
 import numpy as np
 import math
-from scipy.sparse import csr_matrix, linalg, hstack, vstack
+from scipy.sparse import csr_matrix, linalg, hstack, vstack, identity
 import pandas as pd
 
 
@@ -58,7 +58,7 @@ class BAC_main:
                     evalpoint += 1
                     # perf_eval() returns perf, reward1, reward2
                 
-                G = csr_matrix((d.num_policy_param, d.num_policy_param), dtype = np.float32)
+                G = csr_matrix((d.num_policy_param, d.num_policy_param), dtype = np.float16)
                 
                 # Run num_episode episodes for BAC Gradient evaluation
                 # Gradient evaluation occurs in batches of episodes (e.g. 5)
@@ -113,7 +113,7 @@ class BAC_main:
                     
                 
                 #Fix the identity matrix
-                G = G + 1e-6 * np.identity(G.shape[0])
+                G = G + 1e-6 * identity(G.shape[0])
                 grad_BAC = self.BAC_grad(episodes, G, d, learning_params)
                 
                 if learning_params.alp_schedule:
@@ -159,13 +159,13 @@ class BAC_main:
         statedic = []
         scr_dic = []
         invG_scr_dic = []
-        alpha = np.array(None, dtype = np.float64)
-        C = np.array(None, dtype = np.float64)
-        Kinv = np.array(None, dtype = np.float64)
-        k = np.array(None, dtype = np.float64)
-        z = np.array(None, dtype = np.float64)
+        alpha = np.array(None, dtype = np.float16)
+        C = np.array(None, dtype = np.float16)
+        Kinv = np.array(None, dtype = np.float16)
+        k = np.array(None, dtype = np.float16)
+        z = np.array(None, dtype = np.float16)
         
-        for l in range(1, learning_params.num_episode):
+        for l in range(0, learning_params.num_episode):
             ISGOAL = 0
             t = 0
             T = T + 1
@@ -179,19 +179,24 @@ class BAC_main:
             
             temp1 = domain_params.kernel_kxx(state, domain_params)
             invG_scr = linalg.spsolve(G, scr)
-            
+            invG_scr = vstack(invG_scr)
             temp2 = ck_xa * (scrT @ invG_scr)
-            kk = temp1 + temp2 # kk is always a scalar but returned as 1x1 array.
+            kk = temp1 + temp2.toarray() # kk is always a scalar but returned as 1x1 array
+            print("kk:", kk)
             
             if m > 0:
                 k = ck_xa * (scrT @ hstack(invG_scr_dic[:])) #State-action kernel -- Fisher Information Kernel
                 k = np.transpose(k.toarray() + domain_params.kernel_kx(state, statedic, domain_params))
-                
                 a = np.dot(Kinv, k)
-                delta = kk - np.dot(np.transpose(k), a) # delta should be a 'scalar'
+                goop = np.dot(np.transpose(k), a)
+                print("goop:", goop)
+                delta = kk - goop # delta should be a 'scalar'
+                print("Here 1 a:", a)
+                print("delta:", delta)
+                
             else:
-                k = np.array([None], dtype = np.float64)
-                a = np.array([None], dtype = np.float64)
+                k = np.array(None, dtype = np.float16)
+                a = np.array(None, dtype = np.float16)
                 delta = kk
             # delta cocmes out to be a 1x1 array which must be changed to scalar
             # hence we use delta[0] and kk[0]
@@ -218,7 +223,7 @@ class BAC_main:
                 
                 # Kinv = [(delta * Kinv) + (a_hat * a_hat'), -a_hat;
                 #         -a_hat'                          , 1] / delta
-                Kinv = (1 / delta.item()) * np.block([[(delta.item() * Kinv) + (a_hat * a_hat.T), (-1 * a_hat)],
+                Kinv = (1 / delta.item()) * np.block([[(delta.item() * Kinv) + np.dot(a_hat, a_hat.T), (-1 * a_hat)],
                                                       [(-1 * a_hat.T) , 1]
                                                       ])
                 if np.isnan(Kinv[0][0]):
@@ -237,7 +242,7 @@ class BAC_main:
                 
                 statedic.append(state)
                 scr_dic.append(scr)
-                invG_scr_dic.append(vstack(invG_scr))
+                invG_scr_dic.append(invG_scr)
                 m = m + 1
                 
                 # k = [[k], [kk]]
@@ -285,8 +290,9 @@ class BAC_main:
                     
                     temp1 = domain_params.kernel_kxx(state, domain_params)
                     invG_scr = linalg.spsolve(G, scr)
+                    invG_scr = vstack(invG_scr)
                     temp2 = ck_xa * (scrT @ invG_scr)
-                    kk = temp1 + temp2 # kk is always a 'scalar'
+                    kk = temp1 + temp2.toarray() # kk is always a 'scalar'
                     k = ck_xa * (scrT @ hstack(invG_scr_dic[:]))
                     
                     # Looping over elements of k and kerne_kx
@@ -310,18 +316,21 @@ class BAC_main:
                         alpha = np.vstack([alpha, 0])
                         # C = [[C, z], [np.transpose(z), 0]]
                         
-                        C = C = np.block([[C, z], [np.transpose(z), 0]])
+                        C = np.block([[C, z], [np.transpose(z), 0]])
+                        if np.isnan(C[0][0]):
+                            C = C[1:, 1:]
+                        
                         statedic.append(state)
                         scr_dic.append(scr)
-                        invG_scr_dic.append(vstack(invG_scr))
+                        invG_scr_dic.append(invG_scr)
                         
                         m = m + 1
                         # Kinv = (1/delta[0]) * [[(delta[0] * Kinv) + (a * np.transpose(a)), -1 * a],
                         #         [np.transpose(-1 * a)                      , 1]]
-                        Kinv = (1 / delta.item()) * np.block([[(delta.item() * Kinv) + np.matmul(a, a.T), (-1 * a)],
+                        Kinv = (1 / delta.item()) * np.block([[(delta.item() * Kinv) + np.dot(a, a.T), (-1 * a)],
                                                       [(-1 * a.T) , 1]
                                                       ])
-                        print("Kinv 2:", Kinv)
+                        # print("Kinv 2:", Kinv)
                         
                         a = np.vstack([z, 1])
                         z = np.vstack([z, 0]) # [[z], [0]]
@@ -333,21 +342,17 @@ class BAC_main:
                         h = a_old - (gam * a)
                         dkk = np.dot(np.transpose(h), dk)
                         prod1 = np.atleast_2d(coef * c_old)
-                        if len(prod1) == 0:
-                            prod1 = np.zeros(np.shape(h))
+                        # if len(prod1) == 0:
+                        #     prod1 = np.zeros(np.shape(h))
                         
                         
                         # print(C, dk)
-                        if np.shape(C) > (1, 1):
-                            prod2 = np.dot(np.atleast_2d(C), dk)
-                        else:
-                            prod2 = C * dk
+                        prod2 = np.dot(np.atleast_2d(C), dk)
                         c = prod1 + h - prod2
                         s = np.dot(np.transpose(dk), c + prod1) + ((1-gam2) * sig2) - (
                             gam * sig2 * coef)
                         
                        
-                
                 #Alpha update
                 alpha = alpha + c * (d.item() / s.item())
                 #C update

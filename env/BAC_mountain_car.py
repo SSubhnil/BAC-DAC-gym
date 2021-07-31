@@ -92,21 +92,19 @@ class mountain_car_continuous_v0:
             tmp1 = y - self.GRID_CENTERS[:,tt].reshape((2, 1))
             #Turns out to be a scalar
             # We solve x'Ax by Matmul Ax then dot product of x and Ax
-            arbi1 = np.matmul(self.INV_SIG_GRID, tmp1)
-            phi_x[tt] = np.exp(-0.5 * np.dot(tmp1.reshape((1, 2)), arbi1)).item()
+            arbi1 = np.dot(self.INV_SIG_GRID, tmp1)
+            phi_x[tt, 0] = np.exp(-0.5 * np.dot(np.transpose(tmp1), arbi1)).item()
             
         for tt in range(0, self.NUM_ACT):
             if tt == 0:
-                phi_xa = np.array([phi_x.reshape(len(phi_x)),
-                                   np.zeros(self.NUM_STATE_FEATURES)])
-            else:
-                phi_xa = np.array([np.zeros(self.NUM_STATE_FEATURES),
-                                   phi_x.reshape(len(phi_x))])
-            
-            phi_xa = phi_xa.reshape(len(phi_x)+self.NUM_STATE_FEATURES)
-            lol = np.dot(phi_xa, theta)
+                phi_xa = np.vstack((phi_x, np.zeros((self.NUM_STATE_FEATURES, 1)))) 
                 
-            mu[tt] = np.exp(lol)
+            else:
+                phi_xa = np.vstack((np.zeros((self.NUM_STATE_FEATURES, 1)), phi_x))
+
+            lol = np.dot(np.transpose(phi_xa), theta)
+                
+            mu[tt] = np.exp(lol.item())
             
         mu = mu / sum(mu)
         
@@ -115,15 +113,15 @@ class mountain_car_continuous_v0:
         # Added some randomness is the action value. a * tmp2
         if tmp2 < mu[0]:
             a = self.ACT[0] #* tmp2
-            scr = np.append(phi_x * (1 - mu[0]),
-                            -phi_x * mu[1], axis = 0)
+            scr = np.vstack((phi_x * (1 - mu[0]),
+                            -phi_x * mu[1]))
     
         else:
             a = self.ACT[-1] #* tmp2
-            scr = np.append(-phi_x * mu[0],
-                            phi_x * (1 - mu[1]), axis = 0)#.reshape((1, len(phi_x)*2))
+            scr = np.vstack((-phi_x * mu[0],
+                            phi_x * (1 - mu[1])))#.reshape((1, len(phi_x)*2))
         
-        # scr HAS TO BE a column-wise 1D array of size 1 x num_state_features 
+        # scr HAS TO BE a row-wise 2D array of size num_state_features x 1 
         return a, scr
     
     
@@ -137,7 +135,7 @@ class mountain_car_continuous_v0:
             xdic.append(statedic[i][0].reshape((2, 1))) ## The shape is v-important
         xdic = np.hstack(xdic)
         arbitrary = np.vstack([self.c_map_pos[0][0], self.c_map_vel[0][0]])
-        y = np.multiply(arbitrary, x)### We will see
+        y = np.dot(arbitrary, x)### We will see
         ydic = mb.repmat(arbitrary, 1, np.shape(xdic)[1]) * xdic
         # Element-wise squaring of Euclidean pair-wise distance
         #Need to install pdist python package 
