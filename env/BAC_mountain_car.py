@@ -56,7 +56,7 @@ class mountain_car_continuous_v0:
                     (j - 0.5) * self.GRID_STEP[1][0])
     
         self.sig_grid = 1.3 * self.GRID_STEP[0]
-        self.sig_grid2 = self.sig_grid**2
+        self.sig_grid2 = np.square(self.sig_grid)
         self.SIG_GRID = self.sig_grid2 * np.identity(2)
         self.INV_SIG_GRID = np.linalg.inv(self.SIG_GRID)
         self.phi_x = np.zeros((self.NUM_STATE_FEATURES, 1))
@@ -139,7 +139,7 @@ class mountain_car_continuous_v0:
         ydic = np.multiply(mb.repmat(arbitrary, 1, np.shape(xdic)[1]),  xdic)
         # Element-wise squaring of Euclidean pair-wise distance
         #Need to install pdist python package 
-        temp = distance.cdist(np.transpose(y), np.transpose(ydic)) ** 2
+        temp = np.square(distance.cdist(np.transpose(y), np.transpose(ydic)))
         kx = ck_x * np.exp((-1 * temp) / (2 * sigk_x*sigk_x))
         return np.squeeze(kx)
     
