@@ -11,7 +11,7 @@ accross all the environments. We will always need a custom BAC code for each
 environmrnt in GYM.
 """
 import cupy as cp
-from numpy import float32
+import numpy as np
 from numpy import matlib as mb
 import math
 from scipy.spatial import distance
@@ -20,11 +20,10 @@ class mountain_car_continuous_v0:
     def __init__(self, gym_env, **kwargs):#Initialize Domain Parameters
         #Initialize the environment variables and parameter functions.
         self.gym_env = gym_env
-        observation_space = gym_env.observation_space
-        action_space = gym_env.action_space
-        self.POS_RANGE = cp.asarray([[observation_space.low[0]], [observation_space.high[0]]])
-        print(self.POS_RANGE)
-        self.VEL_RANGE = cp.asarray([[observation_space.low[-1]], [observation_space.high[-1]]])       
+        observation_space = self.gym_env.observation_space
+        action_space = self.gym_env.action_space
+        self.POS_RANGE = np.array([[observation_space.low[0]], [observation_space.high[0]]])
+        self.VEL_RANGE = np.array([[observation_space.low[-1]], [observation_space.high[-1]]])
         for key, value in kwargs.items():
             if key == "num_episode_eval":
                 self.num_episode_eval = value
@@ -42,13 +41,13 @@ class mountain_car_continuous_v0:
         self.c_map_pos = cp.linalg.solve(un1, un2)
         
         un1 = cp.array([[self.VEL_RANGE[0][0], 1], [self.VEL_RANGE[-1][0], 1]])
-        un2 = cp.asarray([[self.VEL_MAP_RANGE[0][0]], [self.VEL_MAP_RANGE[-1][0]]])
+        un2 = cp.array([[self.VEL_MAP_RANGE[0][0]], [self.VEL_MAP_RANGE[-1][0]]])
         self.c_map_vel = cp.linalg.solve(un1, un2)
         
         self.GRID_STEP = cp.array([[(self.POS_MAP_RANGE[-1][0] - self.POS_MAP_RANGE[0][0])/self.GRID_SIZE[0][0]],
                                   [(self.VEL_MAP_RANGE[-1][0] - self.VEL_MAP_RANGE[0][0])/self.GRID_SIZE[-1][0]]])
         self.NUM_STATE_FEATURES = self.GRID_SIZE[0][0] * self.GRID_SIZE[-1][0]
-        self.GRID_CENTERS = cp.zeros((2,self.NUM_STATE_FEATURES), dtype = float32)
+        self.GRID_CENTERS = cp.zeros((2,self.NUM_STATE_FEATURES), dtype = np.float32)
         
         for i in range(0, self.GRID_SIZE[0][0]):
             for j in range(0, self.GRID_SIZE[-1][0]):
