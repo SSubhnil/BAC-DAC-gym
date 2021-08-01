@@ -17,8 +17,8 @@ dname = os.path.dirname(abspath)
 os.chdir(dname)
 os.chdir("..")
 
-from env.bac_mountain_car import mountain_car_continuous_v0 as mc0_env 
-from bac import BAC_main
+from env.BAC_mountain_car import mountain_car_continuous_v0 as mc0_env 
+from BAC import BAC_main
 
 class learning_parameters(object):
     """
