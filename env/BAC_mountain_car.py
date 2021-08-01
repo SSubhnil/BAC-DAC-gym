@@ -22,9 +22,9 @@ class mountain_car_continuous_v0:
         self.gym_env = gym_env
         observation_space = gym_env.observation_space
         action_space = gym_env.action_space
-        self.POS_RANGE = cp.array([[observation_space.low[0]], [observation_space.high[0]]])
+        self.POS_RANGE = cp.asarray([[observation_space.low[0]], [observation_space.high[0]]])
         print(self.POS_RANGE)
-        self.VEL_RANGE = cp.array([[observation_space.low[-1]], [observation_space.high[-1]]])       
+        self.VEL_RANGE = cp.asarray([[observation_space.low[-1]], [observation_space.high[-1]]])       
         for key, value in kwargs.items():
             if key == "num_episode_eval":
                 self.num_episode_eval = value
