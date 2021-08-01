@@ -81,10 +81,10 @@ if get_existing_results == 0:
     
     # Write to a file
     # convert 'perf' to Dataframe
-#%%
+
     if write_to_file == 1:
-        perf.to_csv(r'results\MountainCar_BAC_Evaluation-(Reward_Fix).csv')
-        pd_dataframe.to_csv(r'results\MountainCarContinuous-(Reward_Fix).csv')
+        perf.to_csv(r'results\MountainCar_BAC_Evaluation-(Reward_Fix-2).csv')
+        pd_dataframe.to_csv(r'results\MountainCarContinuous-(Reward_Fix-2).csv')
     
 else:
     pd_dataframe = pd.read_csv('results\MountainCarContinuous.csv')
