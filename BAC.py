@@ -5,9 +5,9 @@ Created on Fri Jun 25 18:58:44 2021
 @author: DELL
 """
 
-import numpy as np
+import cupy as np
 import math
-from scipy.sparse import csr_matrix, linalg, hstack, vstack, identity
+from cupyx.scipy.sparse import csr_matrix, linalg, hstack, vstack, identity
 import pandas as pd
 
 

@@ -10,7 +10,7 @@ to the BAC and BAC_grad for computation. This is how we can keep the BAC standar
 accross all the environments. We will always need a custom BAC code for each
 environmrnt in GYM.
 """
-import numpy as np
+import cupy as np
 from numpy import matlib as mb
 import math
 from scipy.spatial import distance
@@ -21,8 +21,8 @@ class mountain_car_continuous_v0:
         self.gym_env = gym_env
         observation_space = gym_env.observation_space
         action_space = gym_env.action_space
-        self.POS_RANGE = np.array([[observation_space.low[0]], [observation_space.high[0]]], dtype=np.float32)
-        self.VEL_RANGE = np.array([[observation_space.low[-1]], [observation_space.high[-1]]], dtype=np.float32)
+        self.POS_RANGE = np.array([[observation_space.low[0]], [observation_space.high[0]]], dtype=np.float16)
+        self.VEL_RANGE = np.array([[observation_space.low[-1]], [observation_space.high[-1]]], dtype=np.float16)
         
         for key, value in kwargs.items():
             if key == "num_episode_eval":
@@ -46,7 +46,7 @@ class mountain_car_continuous_v0:
         self.GRID_STEP = np.array([[(self.POS_MAP_RANGE[-1][0] - self.POS_MAP_RANGE[0][0])/self.GRID_SIZE[0][0]],
                                   [(self.VEL_MAP_RANGE[-1][0] - self.VEL_MAP_RANGE[0][0])/self.GRID_SIZE[-1][0]]])
         self.NUM_STATE_FEATURES = self.GRID_SIZE[0][0] * self.GRID_SIZE[-1][0]
-        self.GRID_CENTERS = np.zeros((2,self.NUM_STATE_FEATURES), dtype = np.float32)
+        self.GRID_CENTERS = np.zeros((2,self.NUM_STATE_FEATURES), dtype = np.float16)
         
         for i in range(0, self.GRID_SIZE[0][0]):
             for j in range(0, self.GRID_SIZE[-1][0]):

@@ -7,7 +7,7 @@ Run cell 3 and 4 for sim_rendering and plotting respectively.
 
 # Import Libraries
 import gym
-import numpy as np
+import cupy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -81,10 +81,9 @@ if get_existing_results == 0:
     
     # Write to a file
     # convert 'perf' to Dataframe
-#%%
     if write_to_file == 1:
-        perf.to_csv(r'results\MountainCar_BAC_Evaluation-(Reward_Fix).csv')
-        pd_dataframe.to_csv(r'results\MountainCarContinuous-(Reward_Fix).csv')
+        perf.to_csv(r'results\MountainCar_BAC_Evaluation-(CuPy_Fix).csv')
+        pd_dataframe.to_csv(r'results\MountainCarContinuous-(CuPy_Fix).csv')
     
 else:
     pd_dataframe = pd.read_csv('results\MountainCarContinuous.csv')
