@@ -5,7 +5,8 @@ Created on Fri Jun 25 18:58:44 2021
 @author: DELL
 """
 
-import cupy as np
+import cupy as cp
+from numpy import float32
 import math
 from cupyx.scipy.sparse import csr_matrix, linalg, hstack, vstack, identity
 import pandas as pd
@@ -17,7 +18,7 @@ class BAC_main:
         self.gym_env = gym_env
         self.domain = domain
         self.learning_params = learning_params
-        self.data = np.zeros((self.learning_params.num_update_max, 7))
+        self.data = cp.zeros((self.learning_params.num_update_max, 7))
         self.grad_store = []
         self.policy_store = []
         
@@ -26,10 +27,10 @@ class BAC_main:
         d = self.domain
         learning_params = self.learning_params
         num_output = (learning_params.num_update_max / learning_params.sample_interval)
-        perf = np.zeros((math.ceil(num_output), 3))
+        perf = cp.zeros((math.ceil(num_output), 3))
         evalpoint = 0
         
-        Pandas_dataframe = pd.DataFrame(np.zeros((learning_params.num_update_max, 6)))
+        Pandas_dataframe = pd.DataFrame(cp.zeros((learning_params.num_update_max, 6)))
         Pandas_dataframe = Pandas_dataframe.astype('object')
         
         STEP = 1
@@ -40,12 +41,12 @@ class BAC_main:
             #toc
             
             #Add file handling protocol
-            theta = np.zeros((d.num_policy_param, 1))
+            theta = cp.zeros((d.num_policy_param, 1))
             
             #Fix the following expression
             alpha_schedule = learning_params.alp_init_BAC * (learning_params.alp_update_param / 
                                                                  (learning_params.alp_update_param + 
-                                                                  (np.arange(1,(learning_params.num_update_max + 1)) - 1)))
+                                                                  (cp.arange(1,(learning_params.num_update_max + 1)) - 1)))
             
             for j in range(0, learning_params.num_update_max):
                 batch_runtime = 0
@@ -58,7 +59,7 @@ class BAC_main:
                     evalpoint += 1
                     # perf_eval() returns perf, reward1, reward2
                 
-                G = csr_matrix((d.num_policy_param, d.num_policy_param), dtype = np.float16)
+                G = csr_matrix((d.num_policy_param, d.num_policy_param), dtype = float32)
                 
                 # Run num_episode episodes for BAC Gradient evaluation
                 # Gradient evaluation occurs in batches of episodes (e.g. 5)
@@ -86,7 +87,7 @@ class BAC_main:
                             if done == False:
                                 # state, _ = d.dynamics(state, a, d)
                                 # state = d.is_goal(state, d)
-                                x_now, reward, done, _ = self.gym_env.step(np.array([a]))
+                                x_now, reward, done, _ = self.gym_env.step(cp.array([a]))
                                 state = d.c_map_eval(x_now)
                                 state.append(done)
                                 reward1 += reward
@@ -127,7 +128,7 @@ class BAC_main:
                 mae = abs(error)/(j+1)
                 mse = math.pow(error, 2)/(j+1)
                 # Data storing in self.data
-                self.data[j] = np.array([j+1, mae, mse, alp, reward1, reward2, avg_episode_length])
+                self.data[j] = cp.array([j+1, mae, mse, alp, reward1, reward2, avg_episode_length])
                 self.grad_store.append(grad_BAC)
                 self.policy_store.append(theta)
                 
@@ -159,17 +160,17 @@ class BAC_main:
         statedic = []
         scr_dic = []
         invG_scr_dic = []
-        alpha = np.array(None, dtype = np.float16)
-        C = np.array(None, dtype = np.float16)
-        Kinv = np.array(None, dtype = np.float16)
-        k = np.array(None, dtype = np.float16)
-        z = np.array(None, dtype = np.float16)
+        alpha = cp.array(None, dtype = float32)
+        C = cp.array(None, dtype = float32)
+        Kinv = cp.array(None, dtype = float32)
+        k = cp.array(None, dtype = float32)
+        z = cp.array(None, dtype = float32)
         
         for l in range(0, learning_params.num_episode):
             ISGOAL = 0
             t = 0
             T = T + 1
-            c = np.zeros((m, 1))
+            c = cp.zeros((m, 1))
             d = 0
             s = math.inf
             # state and scr are lists appended as a 1-D column-wise array objects.
@@ -186,58 +187,58 @@ class BAC_main:
             
             if m > 0:
                 k = ck_xa * (scrT @ hstack(invG_scr_dic[:])) #State-action kernel -- Fisher Information Kernel
-                k = np.transpose(k.toarray() + domain_params.kernel_kx(state, statedic, domain_params))
-                a = np.dot(Kinv, k)
-                goop = np.dot(np.transpose(k), a)
+                k = cp.transpose(k.toarray() + domain_params.kernel_kx(state, statedic, domain_params))
+                a = cp.dot(Kinv, k)
+                goop = cp.dot(cp.transpose(k), a)
                 # print("goop:", goop)
                 delta = kk - goop # delta should be a 'scalar'
                 # print("Here 1 a:", a)
                 # print("delta:", delta)
                 
             else:
-                k = np.array(None, dtype = np.float16)
-                a = np.array(None, dtype = np.float16)
+                k = cp.array(None, dtype = float32)
+                a = cp.array(None, dtype = float32)
                 delta = kk
             # delta cocmes out to be a 1x1 array which must be changed to scalar
             # hence we use delta[0] and kk[0]
             if m == 0 or delta.item() > nu:
                 a_hat = a
-                h = np.vstack([a, -gam]) # h = [[a], [-gam]]
-                if np.isnan(h[0][0]):
+                h = cp.vstack([a, -gam]) # h = [[a], [-gam]]
+                if cp.isnan(h[0][0]):
                     h = h[1:]
                     
                 # a = [[z], [1]]
-                a = np.vstack([z, 1])
-                if np.isnan(a[0][0]):
+                a = cp.vstack([z, 1])
+                if cp.isnan(a[0][0]):
                     a = a[1:]
                     
                 # alpha = [[alpha], [0]]
-                alpha = np.vstack([alpha, 0])
-                if np.isnan(alpha[0][0]):
+                alpha = cp.vstack([alpha, 0])
+                if cp.isnan(alpha[0][0]):
                     alpha = alpha[1:]
                                 
-                # C = [[C, z], [np.transpose(z), 0]]
-                C = np.block([[C, z], [np.transpose(z), 0]])
-                if np.isnan(C[0][0]):
+                # C = [[C, z], [cp.transpose(z), 0]]
+                C = cp.block([[C, z], [cp.transpose(z), 0]])
+                if cp.isnan(C[0][0]):
                     C = C[1:, 1:]
                 
                 # Kinv = [(delta * Kinv) + (a_hat * a_hat'), -a_hat;
                 #         -a_hat'                          , 1] / delta
-                Kinv = (1 / delta.item()) * np.block([[(delta.item() * Kinv) + np.dot(a_hat, a_hat.T), (-1 * a_hat)],
+                Kinv = (1 / delta.item()) * cp.block([[(delta.item() * Kinv) + cp.dot(a_hat, a_hat.T), (-1 * a_hat)],
                                                       [(-1 * a_hat.T) , 1]
                                                       ])
-                if np.isnan(Kinv[0][0]):
+                if cp.isnan(Kinv[0][0]):
                     Kinv = Kinv[1:, 1:]
                 # print("Kinv 1:", Kinv)
                 
                 # z = [[z], [0]]
-                z = np.vstack([z, 0])
-                if np.isnan(z[0][0]):
+                z = cp.vstack([z, 0])
+                if cp.isnan(z[0][0]):
                     z = z[1:]
                 
                 # c = [[c], [0]]
-                c = np.vstack([c, 0])
-                if np.isnan(c[0][0]):
+                c = cp.vstack([c, 0])
+                if cp.isnan(c[0][0]):
                     c = c[1:]
                 
                 statedic.append(state)
@@ -246,19 +247,19 @@ class BAC_main:
                 m = m + 1
                 
                 # k = [[k], [kk]]
-                k = np.vstack([k, kk.item()])
-                if np.isnan(k[0][0]):
+                k = cp.vstack([k, kk.item()])
+                if cp.isnan(k[0][0]):
                     k = k[1:]
         
             #Time-loop
             while (t < episodes[2]):
                 state_old = state
                 k_old = k
-                if np.isnan(k_old[0][0]) and len(k) != 1:
+                if cp.isnan(k_old[0][0]) and len(k) != 1:
                     k_old = k_old[1:]
                 kk_old = kk.item()
                 a_old = a
-                if np.isnan(a_old[0][0]) and np.shape(a_old) != (1,):
+                if cp.isnan(a_old[0][0]) and cp.shape(a_old) != (1,):
                     a_old = a_old[1:]
                 c_old = c
                 s_old = s
@@ -273,9 +274,9 @@ class BAC_main:
                     dk = k_old
                     dkk = kk_old
                     h = a_old
-                    c = (coef * c_old) + h - np.dot(np.atleast_2d(C), dk)
-                    s = sig2 - (gam * sig2 * coef) + np.dot(dk.T, c + (coef * c_old))
-                    d = (coef * d_old) + r - np.dot(dk.T, np.atleast_2d(alpha))
+                    c = (coef * c_old) + h - cp.dot(cp.atleast_2d(C), dk)
+                    s = sig2 - (gam * sig2 * coef) + cp.dot(dk.T, c + (coef * c_old))
+                    d = (coef * d_old) + r - cp.dot(dk.T, cp.atleast_2d(alpha))
                 
                 #Non-goal update    
                 else:
@@ -298,26 +299,26 @@ class BAC_main:
                     # Looping over elements of k and kerne_kx
                     # Cannot directly add scalar and sparse matrix
                     k = k.toarray() + domain_params.kernel_kx(state, statedic, domain_params)
-                    k = np.transpose(k)
-                    a = np.dot(Kinv, k)
-                    delta = kk - np.dot(np.transpose(k), a) # delta should be a 'scalar'
+                    k = cp.transpose(k)
+                    a = cp.dot(Kinv, k)
+                    delta = kk - cp.dot(cp.transpose(k), a) # delta should be a 'scalar'
                     
                     dk = k_old - (gam * k)
-                    d = (coef * d_old) + r - np.dot(dk.T, np.atleast_2d(alpha))
+                    d = (coef * d_old) + r - cp.dot(dk.T, cp.atleast_2d(alpha))
                     
                     if delta.item() > nu:
-                        h = np.vstack((a_old, -gam))
-                        dkk = np.dot(np.transpose(a_old), (k_old - (2 * gam * k))) + (gam2 * kk.item())
-                        c = (coef * np.vstack((c_old, 0))) + h - np.vstack((np.dot(C, dk), 0))
-                        arbi = np.dot(np.atleast_2d(C), dk)
-                        s = ((1 + gam2) * sig2) + dkk - np.dot(dk.T, arbi) + (
-                            2 * coef * np.dot(c_old.T, dk)) - (gam * sig2 * coef)
+                        h = cp.vstack((a_old, -gam))
+                        dkk = cp.dot(cp.transpose(a_old), (k_old - (2 * gam * k))) + (gam2 * kk.item())
+                        c = (coef * cp.vstack((c_old, 0))) + h - cp.vstack((cp.dot(C, dk), 0))
+                        arbi = cp.dot(cp.atleast_2d(C), dk)
+                        s = ((1 + gam2) * sig2) + dkk - cp.dot(dk.T, arbi) + (
+                            2 * coef * cp.dot(c_old.T, dk)) - (gam * sig2 * coef)
                         
-                        alpha = np.vstack([alpha, 0])
-                        # C = [[C, z], [np.transpose(z), 0]]
+                        alpha = cp.vstack([alpha, 0])
+                        # C = [[C, z], [cp.transpose(z), 0]]
                         
-                        C = np.block([[C, z], [np.transpose(z), 0]])
-                        if np.isnan(C[0][0]):
+                        C = cp.block([[C, z], [cp.transpose(z), 0]])
+                        if cp.isnan(C[0][0]):
                             C = C[1:, 1:]
                         
                         statedic.append(state)
@@ -325,38 +326,38 @@ class BAC_main:
                         invG_scr_dic.append(invG_scr)
                         
                         m = m + 1
-                        # Kinv = (1/delta[0]) * [[(delta[0] * Kinv) + (a * np.transpose(a)), -1 * a],
-                        #         [np.transpose(-1 * a)                      , 1]]
-                        Kinv = (1 / delta.item()) * np.block([[(delta.item() * Kinv) + np.dot(a, a.T), (-1 * a)],
+                        # Kinv = (1/delta[0]) * [[(delta[0] * Kinv) + (a * cp.transpose(a)), -1 * a],
+                        #         [cp.transpose(-1 * a)                      , 1]]
+                        Kinv = (1 / delta.item()) * cp.block([[(delta.item() * Kinv) + cp.dot(a, a.T), (-1 * a)],
                                                       [(-1 * a.T) , 1]
                                                       ])
                         # print("Kinv 2:", Kinv)
                         
-                        a = np.vstack([z, 1])
-                        z = np.vstack([z, 0]) # [[z], [0]]
-                        k = np.vstack([k, kk.item()]) # [[k], [kk]]
+                        a = cp.vstack([z, 1])
+                        z = cp.vstack([z, 0]) # [[z], [0]]
+                        k = cp.vstack([k, kk.item()]) # [[k], [kk]]
                         
                     else:#delta <= nu
-                        if np.isnan(a[0][0]):
+                        if cp.isnan(a[0][0]):
                             a = a[1:]
                         h = a_old - (gam * a)
-                        dkk = np.dot(np.transpose(h), dk)
-                        prod1 = np.atleast_2d(coef * c_old)
+                        dkk = cp.dot(cp.transpose(h), dk)
+                        prod1 = cp.atleast_2d(coef * c_old)
                         # if len(prod1) == 0:
-                        #     prod1 = np.zeros(np.shape(h))
+                        #     prod1 = cp.zeros(cp.shape(h))
                         
                         
                         # print(C, dk)
-                        prod2 = np.dot(np.atleast_2d(C), dk)
+                        prod2 = cp.dot(cp.atleast_2d(C), dk)
                         c = prod1 + h - prod2
-                        s = np.dot(np.transpose(dk), c + prod1) + ((1-gam2) * sig2) - (
+                        s = cp.dot(cp.transpose(dk), c + prod1) + ((1-gam2) * sig2) - (
                             gam * sig2 * coef)
                         
                        
                 #Alpha update
                 alpha = alpha + c * (d.item() / s.item())
                 #C update
-                C = C + np.matmul(c, np.transpose(c) / s.item())
+                C = C + cp.matmul(c, cp.transpose(c) / s.item())
                 
                 #Update time counters
                 t = t + 1
