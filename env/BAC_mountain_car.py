@@ -28,7 +28,7 @@ class mountain_car_continuous_v0:
             if key == "num_episode_eval":
                 self.num_episode_eval = value
     
-        self.GOAL = self.POS_RANGE[-1][0]
+        self.GOAL = observation_space.high[0]
         
         self.POS_MAP_RANGE = np.array([[0],[1]])
         self.VEL_MAP_RANGE = np.array([[0],[1]])
@@ -36,16 +36,16 @@ class mountain_car_continuous_v0:
         
         # Features initialization
         # c_map_(pos/vel) are 2 x 1 vectors 
-        self.c_map_pos = np.linalg.solve(np.array([[self.POS_RANGE[0][0], 1], [self.POS_RANGE[-1][0], 1]]),
-                                         np.array([[self.POS_MAP_RANGE[0][0]],[self.POS_MAP_RANGE[-1][0]]]))
+        self.c_map_pos = np.linalg.solve(np.array([[self.POS_RANGE[0][0], 1], [self.POS_RANGE[1][0], 1]]),
+                                         np.array([[self.POS_MAP_RANGE[0][0]],[self.POS_MAP_RANGE[1][0]]]))
         self.c_map_vel = np.linalg.solve(np.array([[self.VEL_RANGE[0][0], 1],
-                                                   [self.VEL_RANGE[-1][0], 1]]),
+                                                   [self.VEL_RANGE[1][0], 1]]),
                                          np.array([[self.VEL_MAP_RANGE[0][0]],
-                                                   [self.VEL_MAP_RANGE[-1][0]]]))
+                                                   [self.VEL_MAP_RANGE[1][0]]]))
         
         self.GRID_STEP = np.array([[(self.POS_MAP_RANGE[-1][0] - self.POS_MAP_RANGE[0][0])/self.GRID_SIZE[0][0]],
                                   [(self.VEL_MAP_RANGE[-1][0] - self.VEL_MAP_RANGE[0][0])/self.GRID_SIZE[-1][0]]])
-        self.NUM_STATE_FEATURES = self.GRID_SIZE[0][0] * self.GRID_SIZE[-1][0]
+        self.NUM_STATE_FEATURES = self.GRID_SIZE[0][0] * self.GRID_SIZE[1][0]
         self.GRID_CENTERS = np.zeros((2,self.NUM_STATE_FEATURES), dtype = np.float32)
         
         for i in range(0, self.GRID_SIZE[0][0]):
@@ -55,13 +55,14 @@ class mountain_car_continuous_v0:
                 self.GRID_CENTERS[1, (i*self.GRID_SIZE[-1][0])+j] = self.VEL_MAP_RANGE[0][0] + (
                     (j - 0.5) * self.GRID_STEP[1][0])
     
-        self.sig_grid = 1.3 * self.GRID_STEP[0]
-        self.sig_grid2 = np.square(self.sig_grid)
+        self.sig_grid = 1.3 * self.GRID_STEP[0][0]
+        self.sig_grid2 = self.sig_grid**2
         self.SIG_GRID = self.sig_grid2 * np.identity(2)
         self.INV_SIG_GRID = np.linalg.inv(self.SIG_GRID)
         self.phi_x = np.zeros((self.NUM_STATE_FEATURES, 1))
         self.NUM_ACT = 2 ## -1.0 and 1.0 since Continuous control problem
         self.ACT = np.array([action_space.low[0], action_space.high[0]])
+        print(self.ACT)
         self.num_policy_param = self.NUM_STATE_FEATURES * self.NUM_ACT
         self.STEP = 1
         
@@ -112,12 +113,12 @@ class mountain_car_continuous_v0:
         
         # Added some randomness is the action value. a * tmp2
         if tmp2 < mu[0]:
-            a = self.ACT[0] #* tmp2
+            a = self.ACT[1] #* tmp2
             scr = np.vstack((phi_x * (1 - mu[0]),
                             -phi_x * mu[1]))
     
         else:
-            a = self.ACT[-1] #* tmp2
+            a = self.ACT[0] #* tmp2
             scr = np.vstack((-phi_x * mu[0],
                             phi_x * (1 - mu[1])))#.reshape((1, len(phi_x)*2))
         

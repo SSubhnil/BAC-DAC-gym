@@ -50,7 +50,7 @@ class learning_parameters(object):
 """
 MENU
 """
-get_existing_results = 0 ## 1 for importing existing results file
+get_existing_results = 1 ## 1 for importing existing results file
                          ## 0 for running new simulation
 write_to_file = 1 ## Writes results to .csv files only if get_existing_results == 0
 
@@ -82,15 +82,50 @@ if get_existing_results == 0:
     # Write to a file
     # convert 'perf' to Dataframe
 
-    if write_to_file == 1:
+    if write_to_file == 0:
         perf.to_csv(r'results\MountainCar_BAC_Evaluation-(Reward_Fix-2).csv')
         pd_dataframe.to_csv(r'results\MountainCarContinuous-(Reward_Fix-2).csv')
     
 else:
-    pd_dataframe = pd.read_csv('results\MountainCarContinuous.csv')
-    perf = pd.read_csv('results\MountainCar_BAC_Evaluation.csv')
-    theta = (pd_dataframe.loc[pd_dataframe.index[-1], 'Policy Evolution']).to_numpy() ## Final learned policy
-    print(theta)
+    # pd_dataframe = pd.read_csv('results\MountainCarContinuous.csv')
+    pd_dataframe = pd.read_csv('results\data_store.csv')
+    # perf = pd.read_csv('results\MountainCar_BAC_Evaluation.csv')
+    # theta = (pd_dataframe.loc[pd_dataframe.index[-1], 'Policy Evolution']).to_numpy() ## Final learned policy
+    theta = np.vstack([1.249851057,
+2.353740868,
+2.671234578,
+1.855580538,
+1.122794309,
+2.42523414,
+3.006517064,
+2.231921839,
+-0.10364529,
+0.409088984,
+0.891831874,
+0.848324243,
+-1.282159611,
+-1.823210222,
+-1.713346034,
+-1.037420735,
+-1.249851057,
+-2.353740868,
+-2.671234578,
+-1.855580538,
+-1.122794309,
+-2.42523414,
+-3.006517064,
+-2.231921839,
+0.10364529,
+-0.409088984,
+-0.891831874,
+-0.848324243,
+1.282159611,
+1.823210222,
+1.713346034,
+1.037420735
+])
+
+    # theta = pd.read_csv('results\theta_final.csv') ## Final learned policy
     
 #%%
 # Visualize
@@ -99,7 +134,7 @@ random_state = env_main.reset()
 state_c_map = domain.c_map_eval(random_state)
 a, _ = domain.calc_score(theta, state_c_map)
 done = False
-episode_length = 100
+episode_length = 300
 
 # Render for num_update_max/sample_interval time i.e. 0-axis length of 'perf'
 t = 0
@@ -121,8 +156,8 @@ plt.plot(pd_dataframe[["Mean Squared Error"]], pd_dataframe[["Episode Batch"]],
          label='MSE with BAC batch episodes')
 plt.plot(pd_dataframe[["Mean Absolute Error"]], pd_dataframe[["Episode Batch"]],
          label='MAE with BAC batch episodes')
-plt.plot(pd_dataframe[["Batch Gym Reward"]], pd_dataframe[["Episode Batch"]],
-         label='Reward evolution with BAC gradient estimation')
+# plt.plot(pd_dataframe[["Batch Gym Reward"]], pd_dataframe[["Episode Batch"]],
+#          label='Reward evolution with BAC gradient estimation')
 plt.plot(pd_dataframe[["Batch User Reward"]], pd_dataframe[["Episode Batch"]],
          label='User Defined Reward evolution')
 plt.plot(pd_dataframe[["Avg. Episode Length (t)"]], pd_dataframe[["Episode Batch"]],
