@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jun 25 18:58:44 2021
+Code is the property of Shubham Subhnil. The allgorithm is referred from [see GitHub readme.md]
+Please use the repository link and Author's name for presenting the code in academic and scientific works.
 
-@author: DELL
+@author: Shubham Subhnil
 """
 
 import numpy as np

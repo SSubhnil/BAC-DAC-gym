@@ -7,8 +7,11 @@ over the environment physics boundaries.
 
 How to: The Mountain car code is initialized as an object and is thrown as an instance
 to the BAC and BAC_grad for computation. This is how we can keep the BAC standardized
-accross all the environments. We will always need a custom BAC code for each
+accross all the environments. We will always need a custom environment code for each
 environmrnt in GYM.
+
+Code is the property of @author. The allgorithm is referred from [see GitHub readme.md]
+Please use the repository link and Author's name for presenting the code in academic and scientific works.
 """
 import numpy as np
 from numpy import matlib as mb

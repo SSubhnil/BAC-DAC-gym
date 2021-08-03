@@ -1,8 +1,13 @@
 """
+Code is the property of Shubham Subhnil. The allgorithm is referred from [see GitHub readme.md]
+Please use the repository link and Author's name for presenting the code in academic and scientific works.
+
+see env/bac_mountain_car.py, [root]/bac.m
+
 DO NOT run the code. Only run each cell.
-Find "MENU" header.
-Run cell 1 and 2 first.
-Run cell 3 and 4 for sim_rendering and plotting respectively. 
+Find "MENU" header in cell 2.
+Run cells 1 and 2 first.
+Run cells 3 and 4 for sim_rendering and plotting respectively. 
 """
 
 # Import Libraries
