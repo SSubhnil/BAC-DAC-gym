@@ -2,7 +2,7 @@
 An OpenAI Gym toolkit for continuous control with Bayesian AC reinforcement learning.
 
 ## Pre-requisites
-###Packages
+### Packages
 1. NumPy, SciPy
 2. gym.py (no Mujoco yet)
 3. Pandas
@@ -13,5 +13,5 @@ An OpenAI Gym toolkit for continuous control with Bayesian AC reinforcement lear
 1. At least Intel Core i3 3rd Gen (~ 1 hour simulation time for 500 BAC updates)
 2. Dedicated Nvidia GPU with Compute Capability > 3.0 (https://developer.nvidia.com/cuda-gpus)
 
-[![500 updates](http://img.youtube.com/vi/nkaAULbHVV4/0.jpg)](http://www.youtube.com/watch?v=nkaAULbHVV4)
+![After 500 BAC policy updates](/500_updates.gif)
 
