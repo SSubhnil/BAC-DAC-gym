@@ -1,5 +1,16 @@
 # BAC-DAC
-Developing an OpenAI Gym toolkit for Bayesian AC reinforcement learning.
+An OpenAI Gym toolkit for continuous control with Bayesian AC reinforcement learning.
 
-The ```MountainCarContinuous-v0``` BAC algorithm is available now. See ```sample``` folder for implementation and ```env``` folder for support function.
-The ALgorithm details will be updated soon.
+## Pre-requisites
+###Packages
+1. NumPy, SciPy
+2. gym.py (no Mujoco yet)
+3. Pandas
+4. CUDA Toolkit 11.3 (for gpu-accelerated branch)
+5. CuPy for CUDA 11.3 (for gpu-accelerated branch)
+
+### Hardware
+1. At least Intel Core i3 3rd Gen (~ 1 hour simulation time for 500 BAC updates)
+2. Dedicated Nvidia GPU with Compute Capability > 3.0 (https://developer.nvidia.com/cuda-gpus)
+
+https://flipmsg.com/r/?MxIclHA
