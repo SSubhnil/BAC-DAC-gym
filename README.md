@@ -22,7 +22,7 @@ Run ```sample/mountain_car_v0_no_jupyter.py``` <br/>
 2. Dedicated Nvidia GPU with Compute Capability > 3.0 (https://developer.nvidia.com/cuda-gpus)
 
 ## Results
->> 5 episodes per batch <<<br/>
+#### 5 episodes per batch <<br/>
 ![MSE vs MAE](/MSE_vs_MAE.png)
 
 ![Avg. Batch Rewards](/avg_reward.png)
