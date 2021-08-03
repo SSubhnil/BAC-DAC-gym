@@ -131,10 +131,12 @@ else:
 # Visualize
 # Apply the learned policy on the Gym render
 random_state = env_main.reset()
+env_main.render()
 state_c_map = domain.c_map_eval(random_state)
 a, _ = domain.calc_score(theta, state_c_map)
 done = False
 episode_length = 300
+input("Press Enter to continue...")
 
 # Render for num_update_max/sample_interval time i.e. 0-axis length of 'perf'
 t = 0
