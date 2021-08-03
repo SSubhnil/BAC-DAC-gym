@@ -10,6 +10,7 @@ import gym
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import scipy.optimize as opt
 
 import os
 abspath = os.path.abspath(__file__)
@@ -87,43 +88,53 @@ if get_existing_results == 0:
         pd_dataframe.to_csv(r'results\MountainCarContinuous-(Reward_Fix-2).csv')
     
 else:
-    # pd_dataframe = pd.read_csv('results\MountainCarContinuous.csv')
-    pd_dataframe = pd.read_csv('results\data_store.csv')
-    # perf = pd.read_csv('results\MountainCar_BAC_Evaluation.csv')
-    # theta = (pd_dataframe.loc[pd_dataframe.index[-1], 'Policy Evolution']).to_numpy() ## Final learned policy
-    theta = np.vstack([1.249851057,
-2.353740868,
-2.671234578,
-1.855580538,
-1.122794309,
-2.42523414,
-3.006517064,
-2.231921839,
--0.10364529,
-0.409088984,
-0.891831874,
-0.848324243,
--1.282159611,
--1.823210222,
--1.713346034,
--1.037420735,
--1.249851057,
--2.353740868,
--2.671234578,
--1.855580538,
--1.122794309,
--2.42523414,
--3.006517064,
--2.231921839,
-0.10364529,
--0.409088984,
--0.891831874,
--0.848324243,
-1.282159611,
-1.823210222,
-1.713346034,
-1.037420735
-])
+    """
+    pd_dataframe: num_updates_max x 9
+                  ["Episode batch", "Mean Absolute Error", "Mean Squared Error", "Learning Rate",
+                   "Batchc Gym Reward", "Batch User Reward", "Avg. Episode Length", "BAC Gradient",
+                   "Policy Evolution"]
+    The last policy in the "Policy Evolution" is the learnt policy 'theta'
+    """
+    pd_dataframe = pd.read_csv('results\MountainCarContinuous.csv')
+    # pd_dataframe = pd.read_csv('results\data_store.csv')
+    perf = pd.read_csv('results\MountainCar_BAC_Evaluation.csv')
+    
+    theta = (pd_dataframe.loc[pd_dataframe.index[-1], 'Policy Evolution']).to_numpy() ## Final learned policy
+
+# Uncomment to use the best policy yet vvv
+#     theta = np.vstack([1.249851057,
+# 2.353740868,
+# 2.671234578,
+# 1.855580538,
+# 1.122794309,
+# 2.42523414,
+# 3.006517064,
+# 2.231921839,
+# -0.10364529,
+# 0.409088984,
+# 0.891831874,
+# 0.848324243,
+# -1.282159611,
+# -1.823210222,
+# -1.713346034,
+# -1.037420735,
+# -1.249851057,
+# -2.353740868,
+# -2.671234578,
+# -1.855580538,
+# -1.122794309,
+# -2.42523414,
+# -3.006517064,
+# -2.231921839,
+# 0.10364529,
+# -0.409088984,
+# -0.891831874,
+# -0.848324243,
+# 1.282159611,
+# 1.823210222,
+# 1.713346034,
+# 1.037420735
+# ])
 
     # theta = pd.read_csv('results\theta_final.csv') ## Final learned policy
     
@@ -136,7 +147,7 @@ state_c_map = domain.c_map_eval(random_state)
 a, _ = domain.calc_score(theta, state_c_map)
 done = False
 episode_length = 300
-input("Press Enter to continue...")
+
 
 # Render for num_update_max/sample_interval time i.e. 0-axis length of 'perf'
 t = 0
@@ -150,22 +161,30 @@ while done == False or t < episode_length:# in secs
     
     env_main.render()
 
+input("Sim done. Press enter to close...")
 env_main.close()
 
 #%% Data Plotting
+plt.figure(0)
+plt.plot(pd_dataframe[["Episode Batch"]], pd_dataframe[["Mean Squared Error"]], 'b-',
+         label = "MSE")
+plt.plot(pd_dataframe[["Episode Batch"]], pd_dataframe[["Mean Absolute Error"]], 'r-',
+         label = "MAE")
+plt.xlabel("BAC Batch")
+plt.ylabel("MSE and MAE")
+plt.legend()
 
-plt.plot(pd_dataframe[["Mean Squared Error"]], pd_dataframe[["Episode Batch"]],
-         label='MSE with BAC batch episodes')
-plt.plot(pd_dataframe[["Mean Absolute Error"]], pd_dataframe[["Episode Batch"]],
-         label='MAE with BAC batch episodes')
-# plt.plot(pd_dataframe[["Batch Gym Reward"]], pd_dataframe[["Episode Batch"]],
-#          label='Reward evolution with BAC gradient estimation')
-plt.plot(pd_dataframe[["Batch User Reward"]], pd_dataframe[["Episode Batch"]],
-         label='User Defined Reward evolution')
-plt.plot(pd_dataframe[["Avg. Episode Length (t)"]], pd_dataframe[["Episode Batch"]],
-         label='Average Episode Length (t)')
+plt.figure(1)
+plt.plot(pd_dataframe[["Episode Batch"]], pd_dataframe[["Batch User Reward"]], 
+          'ro')
+plt.xlabel("BAC Batch")
+plt.ylabel("Avg. Batch Reward")
 
-
+plt.figure(2)
+plt.plot(pd_dataframe[["Episode Batch"]], pd_dataframe[["Avg. Episode Length (t)"]], 
+         'g*')
+plt.xlabel("BAC Batch")
+plt.ylabel("Avg. Episode Length (t)")
 
 
 
