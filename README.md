@@ -19,7 +19,8 @@ Run ```sample/mountain_car_v0_no_jupyter.py``` <br/>
 
 ### Hardware
 1. At least Intel Core i3 3rd Gen (~ 1 hour simulation time for 500 BAC updates)
-2. (only for GPU branch) Dedicated Nvidia GPU with Compute Capability > 3.0 (https://developer.nvidia.com/cuda-gpus)
+2. At least 4 GB DDR3 RAM
+3. (only for GPU branch) Dedicated Nvidia GPU with Compute Capability > 3.0 (https://developer.nvidia.com/cuda-gpus)
 
 ## Results
 #### 5 episodes per batch <<br/>
