@@ -13,4 +13,4 @@ An OpenAI Gym toolkit for continuous control with Bayesian AC reinforcement lear
 1. At least Intel Core i3 3rd Gen (~ 1 hour simulation time for 500 BAC updates)
 2. Dedicated Nvidia GPU with Compute Capability > 3.0 (https://developer.nvidia.com/cuda-gpus)
 
-https://flipmsg.com/r/?MxIclHA
+https://www.youtube.com/embed/nkaAULbHVV4
