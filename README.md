@@ -29,3 +29,11 @@ Run ```sample/mountain_car_v0_no_jupyter.py```
 
 ### Thoughts
 We see that it smoothly achieves the goal. Since this is control control, ```action_space = [-1.0, 1.0]```. The agents above is more inclined to take ```action ~= 1.0```. Running the sim for higher BAC updates would probably see the agent figure out how to take ```action ~= -1.0``` once it is up-slope towards the GOAL. Currently, the sim is processor heavy, thus slow. I am working on CUDA acceleration to speed up the NumPy and SciPy operations.
+
+## References
+1. Ghavamzadeh, Mohammad, Yaakov Engel, and Michal Valko. "Bayesian policy gradient and actor-critic algorithms." The Journal of Machine Learning Research 17.1 (2016): 2319-2371. **Main ref**
+2. Ghavamzadeh, Mohammad, and Yaakov Engel. "Bayesian actor-critic algorithms." Proceedings of the 24th international conference on Machine learning. 2007.
+3. Ciosek, Kamil, et al. "Better exploration with optimistic actor-critic." arXiv preprint arXiv:1910.12807 (2019).
+4. Ghavamzadeh, Mohammad, et al. "Bayesian reinforcement learning: A survey." arXiv preprint arXiv:1609.04436 (2016).
+5. Kurenkov, Andrey, et al. "Ac-teach: A bayesian actor-critic method for policy learning with an ensemble of suboptimal teachers." arXiv preprint arXiv:1909.04121 (2019).
+6. Bhatnagar, Shalabh, et al. "Natural actor–critic algorithms." Automatica 45.11 (2009): 2471-2482.
