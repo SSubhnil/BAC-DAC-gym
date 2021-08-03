@@ -5,7 +5,9 @@ An OpenAI Gym toolkit for continuous control with Bayesian AC reinforcement lear
 ![After 500 BAC policy updates](/500_updates.gif) <br/>
 https://youtu.be/nkaAULbHVV4 <br/>
 
-Run ```sample/mountain_car_v0_no_jupyter.py```
+Run ```sample/mountain_car_v0_no_jupyter.py``` <br/>
+
+^^Notice - I am working on CUDA accelerated branch. I will update it here ASAP.
 
 ## Pre-requisites
 ### Packages
@@ -17,10 +19,11 @@ Run ```sample/mountain_car_v0_no_jupyter.py```
 
 ### Hardware
 1. At least Intel Core i3 3rd Gen (~ 1 hour simulation time for 500 BAC updates)
-2. Dedicated Nvidia GPU with Compute Capability > 3.0 (https://developer.nvidia.com/cuda-gpus)
+2. At least 4 GB DDR3 RAM
+3. (only for GPU branch) Dedicated Nvidia GPU with Compute Capability > 3.0 (https://developer.nvidia.com/cuda-gpus)
 
 ## Results
-
+#### 5 episodes per batch <<br/>
 ![MSE vs MAE](/MSE_vs_MAE.png)
 
 ![Avg. Batch Rewards](/avg_reward.png)
