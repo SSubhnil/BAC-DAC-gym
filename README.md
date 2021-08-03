@@ -10,8 +10,8 @@ Run ```sample/mountain_car_v0_no_jupyter.py```
 ## Pre-requisites
 ### Packages
 1. NumPy, SciPy
-2. gym.py (no Mujoco yet)
-3. Pandas
+2. OpenAI Gym gym.py (no Mujoco yet)
+3. Pandas, matplotlib
 4. CUDA Toolkit 11.3 (for gpu-accelerated branch)
 5. CuPy for CUDA 11.3 (for gpu-accelerated branch)
 
