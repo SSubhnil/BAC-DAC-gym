@@ -2,7 +2,7 @@
 Code is the property of Shubham Subhnil. The allgorithm is referred from [see GitHub readme.md]
 Please use the repository link and Author's name for presenting the code in academic and scientific works.
 
-see env/bac_mountain_car.py, [root]/bac.m
+see env/bac_mountain_car.py, [root]/bac.py
 
 DO NOT run the code. Only run each cell.
 Find "MENU" header in cell 2.
