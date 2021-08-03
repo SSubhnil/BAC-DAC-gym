@@ -2,8 +2,10 @@
 An OpenAI Gym toolkit for continuous control with Bayesian AC reinforcement learning.
 
 
-![After 500 BAC policy updates](/500_updates.gif)
-https://youtu.be/nkaAULbHVV4
+![After 500 BAC policy updates](/500_updates.gif) <br/>
+https://youtu.be/nkaAULbHVV4 <br/>
+
+Run sample/mountain_car_v0_no_jupyter.py 
 
 ## Pre-requisites
 ### Packages
