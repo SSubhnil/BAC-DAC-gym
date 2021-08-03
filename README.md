@@ -17,7 +17,11 @@ https://youtu.be/nkaAULbHVV4
 1. At least Intel Core i3 3rd Gen (~ 1 hour simulation time for 500 BAC updates)
 2. Dedicated Nvidia GPU with Compute Capability > 3.0 (https://developer.nvidia.com/cuda-gpus)
 
+## Results
 
+![MSE vs MAE](/MSE_vs_MAE.png)
 
+![Avg. Batch Rewards](/avg_reward.png)
 
+![Avg. Episode Lengths / Batch](/avg_length.png)
 
