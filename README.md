@@ -1,6 +1,10 @@
 # BAC-DAC
 An OpenAI Gym toolkit for continuous control with Bayesian AC reinforcement learning.
 
+
+![After 500 BAC policy updates](/500_updates.gif)
+https://youtu.be/nkaAULbHVV4
+
 ## Pre-requisites
 ### Packages
 1. NumPy, SciPy
@@ -13,5 +17,7 @@ An OpenAI Gym toolkit for continuous control with Bayesian AC reinforcement lear
 1. At least Intel Core i3 3rd Gen (~ 1 hour simulation time for 500 BAC updates)
 2. Dedicated Nvidia GPU with Compute Capability > 3.0 (https://developer.nvidia.com/cuda-gpus)
 
-![After 500 BAC policy updates](/500_updates.gif)
+
+
+
 
