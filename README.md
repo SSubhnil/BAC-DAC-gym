@@ -7,7 +7,7 @@ https://youtu.be/nkaAULbHVV4 <br/>
 
 Run ```sample/mountain_car_v0_no_jupyter.py``` <br/>
 
-^^Notice - Working on CUDA accelerated branch. I will update it here ASAP.
+^^Notice - I am working on CUDA accelerated branch. I will update it here ASAP.
 
 ## Pre-requisites
 ### Packages
