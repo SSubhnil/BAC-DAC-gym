@@ -31,7 +31,7 @@ Run ```sample/mountain_car_v0_no_jupyter.py``` <br/>
 ![Avg. Episode Lengths / Batch](/avg_length.png)
 
 ### Thoughts
-We see that it smoothly achieves the goal. Since this is control control, ```action_space = [-1.0, 1.0]```. The agents above is more inclined to take ```action ~= 1.0```. Running the sim for higher BAC updates would probably see the agent figure out how to take ```action ~= -1.0``` once it is up-slope towards the GOAL. Currently, the sim is processor heavy, thus slow. I am working on CUDA acceleration to speed up the NumPy and SciPy operations.
+We see that it smoothly achieves the goal. Since this is continuous control, ```action_space = [-1.0, 1.0]```. The agents above is more inclined to take ```action ~= 1.0```. Running the sim for higher BAC updates would probably see the agent figure out how to take ```action ~= -1.0``` once it is up-slope towards the GOAL. Currently, the sim is processor heavy, thus slow. I am working on CUDA acceleration to speed up the NumPy and SciPy operations.
 
 ## References
 1. Ghavamzadeh, Mohammad, Yaakov Engel, and Michal Valko. "Bayesian policy gradient and actor-critic algorithms." The Journal of Machine Learning Research 17.1 (2016): 2319-2371. **Main ref**
