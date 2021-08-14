@@ -1,5 +1,5 @@
 # BAC-DAC
-An OpenAI Gym toolkit for continuous control with Bayesian AC reinforcement learning.
+An OpenAI Gym toolkit for continuous control with Bayesian Actor-critic reinforcement learning.
 
 
 ![After 500 BAC policy updates](/500_updates.gif) <br/>
